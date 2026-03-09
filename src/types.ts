@@ -29,6 +29,9 @@ export interface ItemInstance {
   defId: string;
   x: number;
   y: number;
+  renderX: number;
+  renderY: number;
+  renderScale: number;
 }
 
 /**
@@ -42,6 +45,7 @@ export interface BuildingDefinition {
   type: BuildingType;
   size: { x: number; y: number };
   iconPath: string; // URL to the external SVG
+  itemPool?: string[];
   ports?: Array<{
     type: 'input' | 'output';
     x: number;

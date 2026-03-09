@@ -1,0 +1,11 @@
+{
+  "items": [
+    {
+      "id": "orb",
+      "name": "Energy Orb",
+      "properties": {},
+      "cost": 10,
+      "iconPath": "/icons/orb.svg"
+    }
+  ]
+}

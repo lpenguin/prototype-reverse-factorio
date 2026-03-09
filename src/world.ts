@@ -58,6 +58,9 @@ export function removeBuilding(world: WorldState, x: number, y: number): boolean
 export function addItem(world: WorldState, item: ItemInstance): boolean {
   const key = gridKey(item.x, item.y);
   if (world.items.has(key)) return false;
+  item.renderX ??= item.x;
+  item.renderY ??= item.y;
+  item.renderScale ??= 0;
   world.items.set(key, item);
   return true;
 }

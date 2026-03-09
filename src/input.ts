@@ -1,14 +1,16 @@
-import type { ViewState, WorldState, Direction, Building } from './types.ts';
+import type { ViewState, WorldState, Direction, Building, ItemInstance } from './types.ts';
 import { renderGridLines, updateTransform, renderWorld } from './renderer.ts';
-import { placeBuilding } from './world.ts';
+import { placeBuilding, gridKey, removeItem } from './world.ts';
 import { buildingsRegistry as registry } from './registry.ts';
+import { getHandler } from './simulation.ts';
 
 export function setupInput(
   svgElement: SVGSVGElement,
   worldGroup: SVGGElement,
   gridGroup: SVGGElement,
   viewState: ViewState,
-  world: WorldState
+  world: WorldState,
+  dyingItems: Map<string, ItemInstance>,
 ): void {
   let isPanning = false;
   let lastX = 0;
@@ -59,10 +61,21 @@ export function setupInput(
             x: coords.x,
             y: coords.y,
             direction: viewState.selectedDirection,
-            ...(def.type === 'emitter' ? { itemPool: ['iron-ore'] } : {})
+            ...(def.type === 'emitter' ? { itemPool: def.itemPool ?? [] } : {})
           } as Building;
           
           if (placeBuilding(world, newBuilding)) {
+            // If there's an item at the placed cell, let the building consume it
+            const item = world.items.get(gridKey(newBuilding.x, newBuilding.y));
+            if (item) {
+              const handler = getHandler(newBuilding.type);
+              if (handler && handler.accept(world, newBuilding as never, item)) {
+                item.x = newBuilding.x;
+                item.y = newBuilding.y;
+                removeItem(world, newBuilding.x, newBuilding.y);
+                dyingItems.set(gridKey(newBuilding.x, newBuilding.y), item);
+              }
+            }
             updateDisplay();
           }
         }

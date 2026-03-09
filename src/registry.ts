@@ -1,11 +1,12 @@
-import type { BuildingDefinition } from './types.ts';
-import config from './buildings.config.json';
+import type { BuildingDefinition, ItemDefinition } from './types.ts';
+import buildingsConfig from './buildings.config.json';
+import itemsConfig from './items.config.json';
 
-class Registry {
+class BuildingsRegistry {
   private buildings: Map<string, BuildingDefinition> = new Map();
 
   constructor() {
-    for (const def of config.buildings) {
+    for (const def of buildingsConfig.buildings) {
       this.buildings.set(def.id, def as BuildingDefinition);
     }
   }
@@ -19,5 +20,24 @@ class Registry {
   }
 }
 
-export const registry = new Registry();
-export default registry;
+class ItemRegistry {
+  private items: Map<string, ItemDefinition> = new Map();
+
+  constructor() {
+    for (const def of itemsConfig.items) {
+      this.items.set(def.id, def as ItemDefinition);
+    }
+  }
+
+  getItem(id: string): ItemDefinition | undefined {
+    return this.items.get(id);
+  }
+
+  getAllItems(): ItemDefinition[] {
+    return Array.from(this.items.values());
+  }
+}
+
+export const buildingsRegistry = new BuildingsRegistry();
+export const itemRegistry = new ItemRegistry();
+export default buildingsRegistry;

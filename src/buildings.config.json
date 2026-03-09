@@ -6,6 +6,7 @@
       "type": "emitter",
       "size": { "x": 1, "y": 1 },
       "iconPath": "/icons/emitter.svg",
+      "itemPool": ["orb"],
       "ports": [
         { "type": "output", "x": 0, "y": 0, "direction": "E" }
       ]

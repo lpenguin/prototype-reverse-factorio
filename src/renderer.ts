@@ -1,5 +1,6 @@
-import type { ViewState, WorldState } from './types.ts';
-import { registry } from './registry.ts';
+import type { ViewState, WorldState, ItemInstance } from './types.ts';
+import { buildingsRegistry as registry } from './registry.ts';
+import { itemRegistry } from './registry.ts';
 
 /**
  * Re-render the infinite grid lines based on the current view box.
@@ -72,7 +73,7 @@ function renderPreview(worldGroup: SVGGElement, view: ViewState, world?: WorldSt
   const strokeColor = isOccupied ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 255, 0, 0.5)';
 
   const cellSizeVal = cellSize;
-  const rotation = view.selectedDirection * 90;
+  const rotation = (view.selectedDirection - 1) * 90;
   const centerX = x * cellSizeVal + cellSizeVal / 2;
   const centerY = y * cellSizeVal + cellSizeVal / 2;
 
@@ -108,7 +109,7 @@ function renderPreview(worldGroup: SVGGElement, view: ViewState, world?: WorldSt
 /**
  * Stub function to render buildings and items.
  */
-export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: ViewState): void {
+export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: ViewState, dyingItems?: Map<string, ItemInstance>): void {
   // Clear buildings (except grid and preview for now, but we'll manage it better)
   let layer = worldGroup.querySelector('#buildings-layer') as SVGGElement;
   if (!layer) {
@@ -124,8 +125,8 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
     const y = building.y * 48;
     const centerX = x + 24;
     const centerY = y + 24;
-    const rotation = (building.direction ?? 1) * 90;
-    
+    const rotation = ((building.direction ?? 1) - 1) * 90;
+
     // Icon
     const def = registry.getAllBuildings().find(d => d.type === building.type);
     if (def && def.iconPath) {
@@ -141,6 +142,33 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
 
     layer.appendChild(g);
   });
+
+  // Items layer
+  let itemsLayer = worldGroup.querySelector('#items-layer') as SVGGElement;
+  if (!itemsLayer) {
+    itemsLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    itemsLayer.id = 'items-layer';
+    worldGroup.appendChild(itemsLayer);
+  }
+  itemsLayer.innerHTML = '';
+
+  const renderItem = (item: ItemInstance) => {
+    const cx = item.renderX * 48 + 24;
+    const cy = item.renderY * 48 + 24;
+    const def = itemRegistry.getItem(item.defId);
+    if (!def) return;
+    const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', def.iconPath);
+    img.setAttribute('x', '-12');
+    img.setAttribute('y', '-12');
+    img.setAttribute('width', '24');
+    img.setAttribute('height', '24');
+    img.setAttribute('transform', `translate(${cx},${cy}) scale(${item.renderScale})`);
+    itemsLayer.appendChild(img);
+  };
+
+  world.items.forEach(renderItem);
+  dyingItems?.forEach(renderItem);
 
   if (view) {
     renderPreview(worldGroup, view, world);
