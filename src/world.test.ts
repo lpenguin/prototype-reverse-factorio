@@ -22,7 +22,8 @@ describe('World Logic', () => {
   it('should calculate direction offsets correctly', () => {
     expect(getDirectionOffset(Direction.N)).toEqual({ dx: 0, dy: -1 });
     expect(getDirectionOffset(Direction.E)).toEqual({ dx: 1, dy: 0 });
-    expect(getDirectionOffset(Direction.SE)).toEqual({ dx: 1, dy: 1 });
+    expect(getDirectionOffset(Direction.S)).toEqual({ dx: 0, dy: 1 });
+    expect(getDirectionOffset(Direction.W)).toEqual({ dx: -1, dy: 0 });
   });
 
   it('should calculate port cells correctly', () => {

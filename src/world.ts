@@ -9,18 +9,14 @@ export function gridKey(x: number, y: number): string {
 }
 
 /**
- * Calculate the (dx, dy) offset for a given 8-way direction
+ * Calculate the (dx, dy) offset for a given 4-way direction
  */
 export function getDirectionOffset(dir: Direction): { dx: number; dy: number } {
   switch (dir) {
     case Direction.N: return { dx: 0, dy: -1 };
-    case Direction.NE: return { dx: 1, dy: -1 };
     case Direction.E: return { dx: 1, dy: 0 };
-    case Direction.SE: return { dx: 1, dy: 1 };
     case Direction.S: return { dx: 0, dy: 1 };
-    case Direction.SW: return { dx: -1, dy: 1 };
     case Direction.W: return { dx: -1, dy: 0 };
-    case Direction.NW: return { dx: -1, dy: -1 };
     default: return { dx: 0, dy: 0 };
   }
 }
