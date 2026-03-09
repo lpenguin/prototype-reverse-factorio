@@ -13,6 +13,7 @@ export function setupInput(
   dyingItems: Map<string, ItemInstance>,
 ): void {
   let isPanning = false;
+  let isPainting = false;
   let lastX = 0;
   let lastY = 0;
 
@@ -30,6 +31,42 @@ export function setupInput(
       x: Math.floor(x / viewState.cellSize),
       y: Math.floor(y / viewState.cellSize)
     };
+  };
+
+  const tryErase = (coords: { x: number; y: number }) => {
+    const removed = world.buildings.delete(gridKey(coords.x, coords.y));
+    if (removed) {
+      updateDisplay();
+    }
+  };
+
+  const tryPlace = (coords: { x: number; y: number }) => {
+    if (!viewState.selectedBuildingId || viewState.selectedBuildingId === 'erase') return;
+    const def = registry.getBuilding(viewState.selectedBuildingId);
+    if (!def) return;
+
+    const newBuilding: Building = {
+      type: def.type as any,
+      x: coords.x,
+      y: coords.y,
+      direction: viewState.selectedDirection,
+      ...(def.type === 'emitter' ? { itemPool: def.itemPool ?? [] } : {})
+    } as Building;
+    
+    if (placeBuilding(world, newBuilding)) {
+      // If there's an item at the placed cell, let the building consume it
+      const item = world.items.get(gridKey(newBuilding.x, newBuilding.y));
+      if (item) {
+        const handler = getHandler(newBuilding.type);
+        if (handler && handler.accept(world, newBuilding as never, item)) {
+          item.x = newBuilding.x;
+          item.y = newBuilding.y;
+          removeItem(world, newBuilding.x, newBuilding.y);
+          dyingItems.set(gridKey(newBuilding.x, newBuilding.y), item);
+        }
+      }
+      updateDisplay();
+    }
   };
 
   const cancelSelection = () => {
@@ -51,46 +88,32 @@ export function setupInput(
   // Interaction
   svgElement.addEventListener('pointerdown', (e) => {
     if (e.button === 0) { // Left-click
-      if (viewState.selectedBuildingId === 'erase') {
-        const coords = getGridCoords(e.clientX, e.clientY);
-        const removed = world.buildings.delete(gridKey(coords.x, coords.y));
-        if (removed) {
-          updateDisplay();
+      const coords = getGridCoords(e.clientX, e.clientY);
+      
+      // Update preview immediately on click
+      if (viewState.selectedBuildingId) {
+        viewState.previewCoords = coords;
+      }
+
+      if (e.shiftKey && viewState.selectedBuildingId) {
+        isPainting = true;
+        svgElement.setPointerCapture(e.pointerId);
+        if (viewState.selectedBuildingId === 'erase') {
+          tryErase(coords);
+        } else {
+          tryPlace(coords);
         }
+      } else if (viewState.selectedBuildingId === 'erase') {
+        tryErase(coords);
       } else if (viewState.selectedBuildingId) {
-        // Place building
-        const coords = getGridCoords(e.clientX, e.clientY);
-        const def = registry.getBuilding(viewState.selectedBuildingId);
-        if (def) {
-          const newBuilding: Building = {
-            type: def.type as any,
-            x: coords.x,
-            y: coords.y,
-            direction: viewState.selectedDirection,
-            ...(def.type === 'emitter' ? { itemPool: def.itemPool ?? [] } : {})
-          } as Building;
-          
-          if (placeBuilding(world, newBuilding)) {
-            // If there's an item at the placed cell, let the building consume it
-            const item = world.items.get(gridKey(newBuilding.x, newBuilding.y));
-            if (item) {
-              const handler = getHandler(newBuilding.type);
-              if (handler && handler.accept(world, newBuilding as never, item)) {
-                item.x = newBuilding.x;
-                item.y = newBuilding.y;
-                removeItem(world, newBuilding.x, newBuilding.y);
-                dyingItems.set(gridKey(newBuilding.x, newBuilding.y), item);
-              }
-            }
-            updateDisplay();
-          }
-        }
+        tryPlace(coords);
       } else {
         isPanning = true;
         lastX = e.clientX;
         lastY = e.clientY;
         svgElement.setPointerCapture(e.pointerId);
       }
+      updateDisplay();
     } else if (e.button === 2) { // Right-click
       const coords = getGridCoords(e.clientX, e.clientY);
       const key = `${coords.x},${coords.y}`;
@@ -110,7 +133,23 @@ export function setupInput(
   svgElement.addEventListener('contextmenu', (e) => e.preventDefault());
 
   svgElement.addEventListener('pointermove', (e) => {
-    if (isPanning) {
+    const coords = getGridCoords(e.clientX, e.clientY);
+
+    // Update preview coords whenever a tool is selected
+    if (viewState.selectedBuildingId) {
+      if (!viewState.previewCoords || viewState.previewCoords.x !== coords.x || viewState.previewCoords.y !== coords.y) {
+        viewState.previewCoords = coords;
+        updateDisplay();
+      }
+    }
+
+    if (isPainting) {
+      if (viewState.selectedBuildingId === 'erase') {
+        tryErase(coords);
+      } else {
+        tryPlace(coords);
+      }
+    } else if (isPanning) {
       const dx = e.clientX - lastX;
       const dy = e.clientY - lastY;
       viewState.panX += dx;
@@ -118,12 +157,6 @@ export function setupInput(
       lastX = e.clientX;
       lastY = e.clientY;
       updateDisplay();
-    } else if (viewState.selectedBuildingId) {
-      const coords = getGridCoords(e.clientX, e.clientY);
-      if (!viewState.previewCoords || viewState.previewCoords.x !== coords.x || viewState.previewCoords.y !== coords.y) {
-        viewState.previewCoords = coords;
-        updateDisplay();
-      }
     }
   });
 
@@ -134,7 +167,10 @@ export function setupInput(
   });
 
   svgElement.addEventListener('pointerup', (e) => {
-    if (isPanning) {
+    if (isPainting) {
+      isPainting = false;
+      svgElement.releasePointerCapture(e.pointerId);
+    } else if (isPanning) {
       isPanning = false;
       svgElement.releasePointerCapture(e.pointerId);
     }
