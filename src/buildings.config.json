@@ -1,0 +1,31 @@
+{
+  "buildings": [
+    {
+      "id": "emitter",
+      "name": "Emitter",
+      "type": "emitter",
+      "size": { "x": 1, "y": 1 },
+      "iconPath": "/icons/emitter.svg",
+      "ports": [
+        { "type": "output", "x": 0, "y": 0, "direction": "E" }
+      ]
+    },
+    {
+      "id": "receiver",
+      "name": "Receiver",
+      "type": "receiver",
+      "size": { "x": 1, "y": 1 },
+      "iconPath": "/icons/receiver.svg",
+      "ports": [
+        { "type": "input", "x": 0, "y": 0, "direction": "W" }
+      ]
+    },
+    {
+      "id": "belt",
+      "name": "Belt",
+      "type": "belt",
+      "size": { "x": 1, "y": 1 },
+      "iconPath": "/icons/belt.svg"
+    }
+  ]
+}

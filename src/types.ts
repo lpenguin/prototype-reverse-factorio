@@ -40,6 +40,20 @@ export interface ItemInstance {
  */
 export type BuildingType = 'emitter' | 'belt' | 'receiver';
 
+export interface BuildingDefinition {
+  id: string;
+  name: string;
+  type: BuildingType;
+  size: { x: number; y: number };
+  iconPath: string; // URL to the external SVG
+  ports?: Array<{
+    type: 'input' | 'output';
+    x: number;
+    y: number;
+    direction: string;
+  }>;
+}
+
 export interface BaseBuilding {
   type: BuildingType;
   x: number;
