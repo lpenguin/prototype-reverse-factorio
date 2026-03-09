@@ -128,14 +128,62 @@ export function tickWorld(world: WorldState): void {
   world.tick++;
   const ctx: TickContext = { movedItems: new Set() };
 
-  // Belts first — advance items before emitters fire
-  for (const building of world.buildings.values()) {
-    if (building.type === 'belt') {
-      getHandler('belt')!.tick(world, building, ctx);
+  // 1. Identify all belts and build a dependency map (target -> sources)
+  const belts = Array.from(world.buildings.values()).filter(b => b.type === 'belt') as Belt[];
+  const beltMap = new Map<string, Belt>();
+  const incoming = new Map<string, string[]>(); // targetKey -> sourceKeys[]
+  const sinks: Belt[] = [];
+
+  for (const belt of belts) {
+    const bKey = gridKey(belt.x, belt.y);
+    beltMap.set(bKey, belt);
+
+    const { dx, dy } = getDirectionOffset(belt.direction);
+    const tx = belt.x + dx;
+    const ty = belt.y + dy;
+    const targetKey = gridKey(tx, ty);
+    const targetBuilding = world.buildings.get(targetKey);
+
+    if (targetBuilding && targetBuilding.type === 'belt') {
+      if (!incoming.has(targetKey)) incoming.set(targetKey, []);
+      incoming.get(targetKey)!.push(bKey);
+    } else {
+      sinks.push(belt);
     }
   }
 
-  // Emitters last — newly emitted items wait at least one tick before moving
+  // 2. Evaluate belts starting from sinks, moving backwards (Sink-to-Source order)
+  const visited = new Set<string>();
+  const beltHandler = getHandler('belt')!;
+
+  function evaluateBelt(belt: Belt) {
+    const key = gridKey(belt.x, belt.y);
+    if (visited.has(key)) return;
+    visited.add(key);
+
+    // Evaluate tick at this belt
+    beltHandler.tick(world, belt, ctx);
+
+    // Find belts pointing to this belt and evaluate them
+    const sources = incoming.get(key) || [];
+    for (const sourceKey of sources) {
+      const sourceBelt = beltMap.get(sourceKey);
+      if (sourceBelt) {
+        evaluateBelt(sourceBelt);
+      }
+    }
+  }
+
+  for (const sink of sinks) {
+    evaluateBelt(sink);
+  }
+
+  // Handle any remaining belts (e.g. cycles not connected to a sink)
+  for (const belt of belts) {
+    evaluateBelt(belt);
+  }
+
+  // 3. Emitters last — newly emitted items wait at least one tick before moving
   for (const building of world.buildings.values()) {
     if (building.type === 'emitter') {
       getHandler('emitter')!.tick(world, building, ctx);
