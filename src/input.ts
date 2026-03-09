@@ -1,7 +1,7 @@
 import type { ViewState, WorldState, Direction, Building } from './types.ts';
 import { renderGridLines, updateTransform, renderWorld } from './renderer.ts';
 import { placeBuilding } from './world.ts';
-import { registry } from './registry.ts';
+import { buildingsRegistry as registry } from './registry.ts';
 
 export function setupInput(
   svgElement: SVGSVGElement,
@@ -37,6 +37,15 @@ export function setupInput(
     updateDisplay();
   };
 
+  const cycleDirection = (reverse: boolean = false) => {
+    if (reverse) {
+      viewState.selectedDirection = ((viewState.selectedDirection + 3) % 4) as Direction;
+    } else {
+      viewState.selectedDirection = ((viewState.selectedDirection + 1) % 4) as Direction;
+    }
+    updateDisplay();
+  };
+
   // Interaction
   svgElement.addEventListener('pointerdown', (e) => {
     if (e.button === 0) { // Left-click
@@ -49,7 +58,7 @@ export function setupInput(
             type: def.type as any,
             x: coords.x,
             y: coords.y,
-            ...(def.type === 'belt' ? { direction: 2 as Direction } : { portDirection: 2 as Direction }),
+            direction: viewState.selectedDirection,
             ...(def.type === 'emitter' ? { itemPool: ['iron-ore'] } : {})
           } as Building;
           
@@ -64,7 +73,18 @@ export function setupInput(
         svgElement.setPointerCapture(e.pointerId);
       }
     } else if (e.button === 2) { // Right-click
-      cancelSelection();
+      const coords = getGridCoords(e.clientX, e.clientY);
+      const key = `${coords.x},${coords.y}`;
+      const existing = world.buildings.get(key);
+
+      if (existing) {
+        // Rotate placed building
+        existing.direction = ((existing.direction + 1) % 4) as Direction;
+        viewState.selectedDirection = existing.direction; // sync last placed
+        updateDisplay();
+      } else {
+        cancelSelection();
+      }
     }
   });
 
@@ -104,6 +124,13 @@ export function setupInput(
   // Zoom interaction
   svgElement.addEventListener('wheel', (e) => {
     e.preventDefault();
+
+    if (viewState.selectedBuildingId) {
+      // Rotate building instead of zooming when a building is selected
+      cycleDirection(e.deltaY > 0);
+      return;
+    }
+
     const zoomSpeed = 0.001;
     const scrollDelta = -e.deltaY;
     const oldZoom = viewState.zoom;

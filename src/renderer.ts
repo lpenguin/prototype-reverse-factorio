@@ -71,15 +71,20 @@ function renderPreview(worldGroup: SVGGElement, view: ViewState, world?: WorldSt
   const color = isOccupied ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 0, 0.2)';
   const strokeColor = isOccupied ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 255, 0, 0.5)';
 
+  const cellSizeVal = cellSize;
+  const rotation = view.selectedDirection * 90;
+  const centerX = x * cellSizeVal + cellSizeVal / 2;
+  const centerY = y * cellSizeVal + cellSizeVal / 2;
+
   const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   group.setAttribute('class', 'building-preview');
   group.style.pointerEvents = 'none';
 
   const ghost = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  ghost.setAttribute('x', (x * cellSize).toString());
-  ghost.setAttribute('y', (y * cellSize).toString());
-  ghost.setAttribute('width', cellSize.toString());
-  ghost.setAttribute('height', cellSize.toString());
+  ghost.setAttribute('x', (x * cellSizeVal).toString());
+  ghost.setAttribute('y', (y * cellSizeVal).toString());
+  ghost.setAttribute('width', cellSizeVal.toString());
+  ghost.setAttribute('height', cellSizeVal.toString());
   ghost.setAttribute('fill', color);
   ghost.setAttribute('stroke', strokeColor);
   ghost.setAttribute('stroke-width', '2');
@@ -88,11 +93,12 @@ function renderPreview(worldGroup: SVGGElement, view: ViewState, world?: WorldSt
   if (def && def.iconPath) {
     const icon = document.createElementNS('http://www.w3.org/2000/svg', 'image');
     icon.setAttributeNS('http://www.w3.org/1999/xlink', 'href', def.iconPath);
-    icon.setAttribute('x', (x * cellSize + 4).toString());
-    icon.setAttribute('y', (y * cellSize + 4).toString());
-    icon.setAttribute('width', (cellSize - 8).toString());
-    icon.setAttribute('height', (cellSize - 8).toString());
+    icon.setAttribute('x', (x * cellSizeVal + 4).toString());
+    icon.setAttribute('y', (y * cellSizeVal + 4).toString());
+    icon.setAttribute('width', (cellSizeVal - 8).toString());
+    icon.setAttribute('height', (cellSizeVal - 8).toString());
     icon.setAttribute('opacity', '0.6');
+    icon.setAttribute('transform', `rotate(${rotation}, ${centerX}, ${centerY})`);
     group.appendChild(icon);
   }
 
@@ -114,16 +120,22 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
   
   world.buildings.forEach((building) => {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const x = building.x * 48;
+    const y = building.y * 48;
+    const centerX = x + 24;
+    const centerY = y + 24;
+    const rotation = (building.direction ?? 1) * 90;
     
     // Icon
     const def = registry.getAllBuildings().find(d => d.type === building.type);
     if (def && def.iconPath) {
       const icon = document.createElementNS('http://www.w3.org/2000/svg', 'image');
       icon.setAttributeNS('http://www.w3.org/1999/xlink', 'href', def.iconPath);
-      icon.setAttribute('x', (building.x * 48).toString());
-      icon.setAttribute('y', (building.y * 48).toString());
-      icon.setAttribute('width', '48');
-      icon.setAttribute('height', '48');
+      icon.setAttribute('x', (x + 4).toString());
+      icon.setAttribute('y', (y + 4).toString());
+      icon.setAttribute('width', '40');
+      icon.setAttribute('height', '40');
+      icon.setAttribute('transform', `rotate(${rotation}, ${centerX}, ${centerY})`);
       g.appendChild(icon);
     }
 

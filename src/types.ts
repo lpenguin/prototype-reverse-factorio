@@ -54,22 +54,20 @@ export interface BaseBuilding {
   type: BuildingType;
   x: number;
   y: number;
+  direction: Direction;
 }
 
 export interface Emitter extends BaseBuilding {
   type: 'emitter';
   itemPool: string[]; // List of ItemDefinition IDs
-  portDirection: Direction;
 }
 
 export interface Belt extends BaseBuilding {
   type: 'belt';
-  direction: Direction;
 }
 
 export interface Receiver extends BaseBuilding {
   type: 'receiver';
-  portDirection: Direction;
 }
 
 export type Building = Emitter | Belt | Receiver;
@@ -94,5 +92,6 @@ export interface ViewState {
   zoom: number;
   cellSize: number;
   selectedBuildingId: string | null;
+  selectedDirection: Direction;
   previewCoords: { x: number; y: number } | null;
 }

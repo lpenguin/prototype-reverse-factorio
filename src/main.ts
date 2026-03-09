@@ -1,7 +1,7 @@
 import { createWorld } from './world.ts';
 import type { ViewState } from './types.ts';
 import { setupInput } from './input.ts';
-import { registry } from './registry.ts';
+import { buildingsRegistry as registry } from './registry.ts';
 import { updateHUD, renderWorld } from './renderer.ts';
 
 function init() {
@@ -12,6 +12,7 @@ function init() {
     zoom: 1,
     cellSize: 48,
     selectedBuildingId: null,
+    selectedDirection: 1, // Default to East
     previewCoords: null,
   };
 
