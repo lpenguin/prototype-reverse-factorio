@@ -1,11 +1,14 @@
-import type { ViewState } from './types.ts';
-import { renderGridLines, updateTransform } from './renderer.ts';
+import type { ViewState, WorldState, Direction, Building } from './types.ts';
+import { renderGridLines, updateTransform, renderWorld } from './renderer.ts';
+import { placeBuilding } from './world.ts';
+import { registry } from './registry.ts';
 
 export function setupInput(
   svgElement: SVGSVGElement,
   worldGroup: SVGGElement,
   gridGroup: SVGGElement,
-  viewState: ViewState
+  viewState: ViewState,
+  world: WorldState
 ): void {
   let isPanning = false;
   let lastX = 0;
@@ -14,27 +17,81 @@ export function setupInput(
   const updateDisplay = () => {
     updateTransform(worldGroup, viewState);
     renderGridLines(gridGroup, viewState, svgElement.clientWidth, svgElement.clientHeight);
+    renderWorld(world, worldGroup, viewState);
   };
 
-  // Pan interaction
+  const getGridCoords = (clientX: number, clientY: number) => {
+    const rect = svgElement.getBoundingClientRect();
+    const x = (clientX - rect.left - viewState.panX) / viewState.zoom;
+    const y = (clientY - rect.top - viewState.panY) / viewState.zoom;
+    return {
+      x: Math.floor(x / viewState.cellSize),
+      y: Math.floor(y / viewState.cellSize)
+    };
+  };
+
+  const cancelSelection = () => {
+    viewState.selectedBuildingId = null;
+    viewState.previewCoords = null;
+    document.querySelectorAll('.tool').forEach(t => t.classList.remove('selected'));
+    updateDisplay();
+  };
+
+  // Interaction
   svgElement.addEventListener('pointerdown', (e) => {
-    if (e.button === 0) { // Left-click only for panning background
-      isPanning = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      svgElement.setPointerCapture(e.pointerId);
+    if (e.button === 0) { // Left-click
+      if (viewState.selectedBuildingId) {
+        // Place building
+        const coords = getGridCoords(e.clientX, e.clientY);
+        const def = registry.getBuilding(viewState.selectedBuildingId);
+        if (def) {
+          const newBuilding: Building = {
+            type: def.type as any,
+            x: coords.x,
+            y: coords.y,
+            ...(def.type === 'belt' ? { direction: 2 as Direction } : { portDirection: 2 as Direction }),
+            ...(def.type === 'emitter' ? { itemPool: ['iron-ore'] } : {})
+          } as Building;
+          
+          if (placeBuilding(world, newBuilding)) {
+            updateDisplay();
+          }
+        }
+      } else {
+        isPanning = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        svgElement.setPointerCapture(e.pointerId);
+      }
+    } else if (e.button === 2) { // Right-click
+      cancelSelection();
     }
   });
 
+  svgElement.addEventListener('contextmenu', (e) => e.preventDefault());
+
   svgElement.addEventListener('pointermove', (e) => {
-    if (!isPanning) return;
-    const dx = e.clientX - lastX;
-    const dy = e.clientY - lastY;
-    viewState.panX += dx;
-    viewState.panY += dy;
-    lastX = e.clientX;
-    lastY = e.clientY;
-    updateDisplay();
+    if (isPanning) {
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      viewState.panX += dx;
+      viewState.panY += dy;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      updateDisplay();
+    } else if (viewState.selectedBuildingId) {
+      const coords = getGridCoords(e.clientX, e.clientY);
+      if (!viewState.previewCoords || viewState.previewCoords.x !== coords.x || viewState.previewCoords.y !== coords.y) {
+        viewState.previewCoords = coords;
+        updateDisplay();
+      }
+    }
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      cancelSelection();
+    }
   });
 
   svgElement.addEventListener('pointerup', (e) => {

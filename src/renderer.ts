@@ -1,4 +1,5 @@
 import type { ViewState, WorldState } from './types.ts';
+import { registry } from './registry.ts';
 
 /**
  * Re-render the infinite grid lines based on the current view box.
@@ -52,10 +53,92 @@ export function updateTransform(worldGroup: SVGGElement, view: ViewState): void 
 }
 
 /**
+ * Render a building ghost at the specified coordinates.
+ */
+function renderPreview(worldGroup: SVGGElement, view: ViewState, world?: WorldState): void {
+  // Remove existing previews
+  const existingPreview = worldGroup.querySelector('.building-preview');
+  if (existingPreview) existingPreview.remove();
+
+  if (!view.selectedBuildingId || !view.previewCoords) return;
+
+  const { x, y } = view.previewCoords;
+  const cellSize = view.cellSize;
+  const def = registry.getBuilding(view.selectedBuildingId);
+
+  // Check if position is occupied 
+  const isOccupied = world ? world.buildings.has(`${x},${y}`) : false;
+  const color = isOccupied ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 0, 0.2)';
+  const strokeColor = isOccupied ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 255, 0, 0.5)';
+
+  const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  group.setAttribute('class', 'building-preview');
+  group.style.pointerEvents = 'none';
+
+  const ghost = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  ghost.setAttribute('x', (x * cellSize).toString());
+  ghost.setAttribute('y', (y * cellSize).toString());
+  ghost.setAttribute('width', cellSize.toString());
+  ghost.setAttribute('height', cellSize.toString());
+  ghost.setAttribute('fill', color);
+  ghost.setAttribute('stroke', strokeColor);
+  ghost.setAttribute('stroke-width', '2');
+  group.appendChild(ghost);
+
+  if (def && def.iconPath) {
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    icon.setAttributeNS('http://www.w3.org/1999/xlink', 'href', def.iconPath);
+    icon.setAttribute('x', (x * cellSize + 4).toString());
+    icon.setAttribute('y', (y * cellSize + 4).toString());
+    icon.setAttribute('width', (cellSize - 8).toString());
+    icon.setAttribute('height', (cellSize - 8).toString());
+    icon.setAttribute('opacity', '0.6');
+    group.appendChild(icon);
+  }
+
+  worldGroup.appendChild(group);
+}
+
+/**
  * Stub function to render buildings and items.
  */
-export function renderWorld(world: WorldState, _worldGroup: SVGGElement): void {
-  // Placeholder for rendering existing buildings/items
-  // The building/item rendering logic will be implemented in Phase 2 & 3.
-  console.log('Rendering world at tick:', world.tick);
+export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: ViewState): void {
+  // Clear buildings (except grid and preview for now, but we'll manage it better)
+  let layer = worldGroup.querySelector('#buildings-layer') as SVGGElement;
+  if (!layer) {
+    layer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    layer.id = 'buildings-layer';
+    worldGroup.appendChild(layer);
+  }
+  layer.innerHTML = '';
+  
+  world.buildings.forEach((building) => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    
+    // Icon
+    const def = registry.getAllBuildings().find(d => d.type === building.type);
+    if (def && def.iconPath) {
+      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+      icon.setAttributeNS('http://www.w3.org/1999/xlink', 'href', def.iconPath);
+      icon.setAttribute('x', (building.x * 48).toString());
+      icon.setAttribute('y', (building.y * 48).toString());
+      icon.setAttribute('width', '48');
+      icon.setAttribute('height', '48');
+      g.appendChild(icon);
+    }
+
+    layer.appendChild(g);
+  });
+
+  if (view) {
+    renderPreview(worldGroup, view, world);
+  }
+}
+
+/**
+ * Update HUD with world state
+ */
+export function updateHUD(world: WorldState): void {
+  const hud = document.querySelector('#hud');
+  if (hud) hud.textContent = `Money: $${world.playerMoney} | Tick: ${world.tick}`;
 }

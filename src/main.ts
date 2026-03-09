@@ -2,6 +2,7 @@ import { createWorld } from './world.ts';
 import type { ViewState } from './types.ts';
 import { setupInput } from './input.ts';
 import { registry } from './registry.ts';
+import { updateHUD, renderWorld } from './renderer.ts';
 
 function init() {
   const world = createWorld();
@@ -10,13 +11,15 @@ function init() {
     panY: window.innerHeight / 2,
     zoom: 1,
     cellSize: 48,
+    selectedBuildingId: null,
+    previewCoords: null,
   };
 
   const svg = document.querySelector<SVGSVGElement>('#app')!;
   const worldGroup = document.querySelector<SVGGElement>('#world')!;
   const gridGroup = document.querySelector<SVGGElement>('#grid')!;
 
-  setupInput(svg, worldGroup, gridGroup, viewState);
+  setupInput(svg, worldGroup, gridGroup, viewState, world);
 
   // Initialize toolbar
   const toolbar = document.querySelector<HTMLDivElement>('#toolbar')!;
@@ -44,9 +47,16 @@ function init() {
     tool.appendChild(label);
     
     tool.addEventListener('click', () => {
+      const isSelected = tool.classList.contains('selected');
       document.querySelectorAll('.tool').forEach(t => t.classList.remove('selected'));
-      tool.classList.add('selected');
-      console.log('Selected tool:', def.id);
+      
+      if (isSelected) {
+        viewState.selectedBuildingId = null;
+      } else {
+        tool.classList.add('selected');
+        viewState.selectedBuildingId = def.id;
+      }
+      console.log('Selected tool:', viewState.selectedBuildingId);
     });
     toolbar.appendChild(tool);
   });
@@ -62,8 +72,8 @@ function init() {
   setInterval(() => {
     if (world.isPaused) return;
     world.tick++;
-    const hud = document.querySelector('#hud');
-    if (hud) hud.textContent = `Money: $${world.playerMoney} | Tick: ${world.tick}`;
+    updateHUD(world);
+    renderWorld(world, worldGroup, viewState);
   }, 500);
 
   console.log('App initialized', world);

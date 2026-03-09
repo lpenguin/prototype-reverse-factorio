@@ -97,4 +97,6 @@ export interface ViewState {
   panY: number;
   zoom: number;
   cellSize: number;
+  selectedBuildingId: string | null;
+  previewCoords: { x: number; y: number } | null;
 }
