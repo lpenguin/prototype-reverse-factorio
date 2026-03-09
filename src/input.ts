@@ -51,7 +51,13 @@ export function setupInput(
   // Interaction
   svgElement.addEventListener('pointerdown', (e) => {
     if (e.button === 0) { // Left-click
-      if (viewState.selectedBuildingId) {
+      if (viewState.selectedBuildingId === 'erase') {
+        const coords = getGridCoords(e.clientX, e.clientY);
+        const removed = world.buildings.delete(gridKey(coords.x, coords.y));
+        if (removed) {
+          updateDisplay();
+        }
+      } else if (viewState.selectedBuildingId) {
         // Place building
         const coords = getGridCoords(e.clientX, e.clientY);
         const def = registry.getBuilding(viewState.selectedBuildingId);

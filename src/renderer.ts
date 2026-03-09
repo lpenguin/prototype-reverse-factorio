@@ -65,12 +65,20 @@ function renderPreview(worldGroup: SVGGElement, view: ViewState, world?: WorldSt
 
   const { x, y } = view.previewCoords;
   const cellSize = view.cellSize;
-  const def = registry.getBuilding(view.selectedBuildingId);
+  const isErase = view.selectedBuildingId === 'erase';
+  const def = isErase ? null : registry.getBuilding(view.selectedBuildingId);
 
   // Check if position is occupied 
   const isOccupied = world ? world.buildings.has(`${x},${y}`) : false;
-  const color = isOccupied ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 0, 0.2)';
-  const strokeColor = isOccupied ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 255, 0, 0.5)';
+  
+  let color, strokeColor;
+  if (isErase) {
+    color = isOccupied ? 'rgba(255, 0, 0, 0.4)' : 'rgba(100, 100, 100, 0.2)';
+    strokeColor = isOccupied ? 'rgba(255, 0, 0, 0.8)' : 'rgba(100, 100, 100, 0.4)';
+  } else {
+    color = isOccupied ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 0, 0.2)';
+    strokeColor = isOccupied ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 255, 0, 0.5)';
+  }
 
   const cellSizeVal = cellSize;
   const rotation = (view.selectedDirection - 1) * 90;
@@ -91,15 +99,18 @@ function renderPreview(worldGroup: SVGGElement, view: ViewState, world?: WorldSt
   ghost.setAttribute('stroke-width', '2');
   group.appendChild(ghost);
 
-  if (def && def.iconPath) {
+  const iconPath = isErase ? '/icons/erase.svg' : (def?.iconPath);
+  if (iconPath) {
     const icon = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-    icon.setAttributeNS('http://www.w3.org/1999/xlink', 'href', def.iconPath);
+    icon.setAttributeNS('http://www.w3.org/1999/xlink', 'href', iconPath);
     icon.setAttribute('x', (x * cellSizeVal + 4).toString());
     icon.setAttribute('y', (y * cellSizeVal + 4).toString());
     icon.setAttribute('width', (cellSizeVal - 8).toString());
     icon.setAttribute('height', (cellSizeVal - 8).toString());
     icon.setAttribute('opacity', '0.6');
-    icon.setAttribute('transform', `rotate(${rotation}, ${centerX}, ${centerY})`);
+    if (!isErase) {
+      icon.setAttribute('transform', `rotate(${rotation}, ${centerX}, ${centerY})`);
+    }
     group.appendChild(icon);
   }
 

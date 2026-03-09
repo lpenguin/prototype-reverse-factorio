@@ -70,6 +70,46 @@ function init() {
     toolbar.appendChild(tool);
   });
 
+  // Add separator
+  const sep = document.createElement('div');
+  sep.className = 'separator';
+  toolbar.appendChild(sep);
+
+  // Add erase tool
+  const eraseTool = document.createElement('div');
+  eraseTool.className = 'tool';
+  eraseTool.dataset.type = 'erase';
+  eraseTool.style.display = 'flex';
+  eraseTool.style.alignItems = 'center';
+
+  const eraseIcon = document.createElement('img');
+  eraseIcon.src = '/icons/erase.svg';
+  eraseIcon.style.width = '24px';
+  eraseIcon.style.height = '24px';
+  eraseIcon.style.pointerEvents = 'none';
+
+  const eraseLabel = document.createElement('span');
+  eraseLabel.textContent = 'Erase';
+  eraseLabel.style.marginLeft = '8px';
+  eraseLabel.style.pointerEvents = 'none';
+
+  eraseTool.appendChild(eraseIcon);
+  eraseTool.appendChild(eraseLabel);
+
+  eraseTool.addEventListener('click', () => {
+    const isSelected = eraseTool.classList.contains('selected');
+    document.querySelectorAll('.tool').forEach(t => t.classList.remove('selected'));
+    
+    if (isSelected) {
+      viewState.selectedBuildingId = null;
+    } else {
+      eraseTool.classList.add('selected');
+      viewState.selectedBuildingId = 'erase';
+    }
+    console.log('Selected tool:', viewState.selectedBuildingId);
+  });
+  toolbar.appendChild(eraseTool);
+
   const pauseBtn = document.querySelector<HTMLDivElement>('#pause-btn')!;
   pauseBtn.addEventListener('click', () => {
     world.isPaused = !world.isPaused;
