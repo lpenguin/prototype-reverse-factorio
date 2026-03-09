@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reverse Factorio</title>
+    <style>
+      body, html { margin: 0; padding: 0; overflow: hidden; height: 100%; width: 100%; font-family: sans-serif; }
+      #app { background: #f0f0f0; display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+      #hud { position: absolute; top: 10px; left: 10px; padding: 10px; background: rgba(255, 255, 255, 0.8); border: 1px solid #aaa; border-radius: 4px; pointer-events: none; z-index: 100; }
+      #menu-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 100; }
+      #pause-menu { display: flex; background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+      #toolbar { display: flex; gap: 10px; background: rgba(0, 0, 0, 0.7); padding: 10px 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+      .tool { color: white; cursor: pointer; padding: 5px 10px; border: 1px solid transparent; border-radius: 4px; user-select: none; }
+      .tool.selected { border-color: white; background: rgba(255,255,255,0.2); }
+    </style>
+  </head>
+  <body>
+    <svg id="app">
+      <g id="grid"></g>
+      <g id="world"></g>
+    </svg>
+    <div id="hud">Money: $0 | Tick: 0</div>
+    <div id="menu-container">
+      <div id="pause-menu">
+        <div class="tool" id="pause-btn">Pause</div>
+      </div>
+      <div id="toolbar">
+        <div class="tool" data-type="emitter">Emitter</div>
+        <div class="tool" data-type="belt">Belt</div>
+        <div class="tool" data-type="receiver">Receiver</div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
