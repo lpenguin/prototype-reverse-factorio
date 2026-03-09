@@ -68,6 +68,7 @@ export interface Emitter extends BaseBuilding {
 
 export interface Belt extends BaseBuilding {
   type: 'belt';
+  lastInputIndex?: number; // Index of the last source belt that successfully moved an item into this belt
 }
 
 export interface Receiver extends BaseBuilding {

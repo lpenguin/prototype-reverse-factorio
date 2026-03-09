@@ -161,15 +161,36 @@ export function tickWorld(world: WorldState): void {
     if (visited.has(key)) return;
     visited.add(key);
 
-    // Evaluate tick at this belt
+    // Evaluate tick at this belt (moves item OUT)
     beltHandler.tick(world, belt, ctx);
+
+    // Check if the belt is now empty and can receive an item
+    const canReceive = !world.items.has(key);
 
     // Find belts pointing to this belt and evaluate them
     const sources = incoming.get(key) || [];
-    for (const sourceKey of sources) {
-      const sourceBelt = beltMap.get(sourceKey);
-      if (sourceBelt) {
-        evaluateBelt(sourceBelt);
+    if (sources.length > 0) {
+      sources.sort();
+      
+      // Calculate start index based on last successful input
+      const startIndex = ((belt.lastInputIndex ?? -1) + 1) % sources.length;
+      const rotatedSources = [
+        ...sources.slice(startIndex),
+        ...sources.slice(0, startIndex)
+      ];
+      
+      let receivedThisTick = false;
+      for (const sourceKey of rotatedSources) {
+        const sourceBelt = beltMap.get(sourceKey);
+        if (sourceBelt) {
+          evaluateBelt(sourceBelt);
+          
+          // If this source successfully moved an item into our belt, update the priority
+          if (canReceive && !receivedThisTick && world.items.has(key)) {
+            belt.lastInputIndex = sources.indexOf(sourceKey);
+            receivedThisTick = true;
+          }
+        }
       }
     }
   }

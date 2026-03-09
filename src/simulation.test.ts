@@ -65,28 +65,43 @@ describe('Simulation Logic', () => {
     expect(world.items.get(gridKey(3, 0))?.defId).toBe('item2');
   });
 
-  it('should not move item if blocked by another item that cannot move', () => {
+  it('should process multiple inputs in round-robin and not count empty belts', () => {
     const world = createWorld();
     
-    // Belt chain: (1,0) -> (2,0). No receiver, so (2,0) is a dead end.
-    placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.E });
-    placeBuilding(world, { type: 'belt', x: 2, y: 0, direction: Direction.E });
-    
-    // To prevent movement out of B2, we could put a building that doesn't accept items
-    // but the current moveItem logic says if there is NO building at (3,0), it CAN move there.
-    // So let's block (3,0) with something that doesn't accept items.
-    // Actually, emitters don't accept items.
-    placeBuilding(world, { type: 'emitter', x: 3, y: 0, direction: Direction.S, itemPool: [] });
+    // Merge: B1 (0,0) -> B3 (1,0), B2 (1,1) -> B3 (1,0)
+    placeBuilding(world, { type: 'belt', x: 0, y: 0, direction: Direction.E }); // B1 (index 0)
+    placeBuilding(world, { type: 'belt', x: 1, y: 1, direction: Direction.N }); // B2 (index 1)
+    placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.E }); // B3
+    placeBuilding(world, { type: 'receiver', x: 2, y: 0, direction: Direction.E });
 
-    addItem(world, { defId: 'item1', x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 0 });
-    addItem(world, { defId: 'item2', x: 2, y: 0, renderX: 2, renderY: 0, renderScale: 0 });
+    // Tick 1: B1 has item, B2 is empty
+    addItem(world, { defId: 'itemA1', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 0 });
+    
+    tickWorld(world);
+    // B1 moves to B3. lastInputIndex becomes 0.
+    expect(world.items.get(gridKey(1, 0))?.defId).toBe('itemA1');
+    expect(world.items.has(gridKey(0, 0))).toBe(false);
+
+    // Tick 2: B1 has item, B2 has item. B3 is empty (itemA1 moved to receiver)
+    addItem(world, { defId: 'itemA2', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 0 });
+    addItem(world, { defId: 'itemB1', x: 1, y: 1, renderX: 1, renderY: 1, renderScale: 0 });
 
     tickWorld(world);
+    // lastInputIndex was 0. Next start index is (0+1)%2 = 1 (B2).
+    // B2 should move.
+    expect(world.items.get(gridKey(1, 0))?.defId).toBe('itemB1');
+    expect(world.items.get(gridKey(0, 0))?.defId).toBe('itemA2');
+    expect(world.items.has(gridKey(1, 1))).toBe(false);
 
-    // B2 tries to move to (3,0). Emitter at (3,0) doesn't accept. Stays at (2,0).
-    // B1 tries to move to (2,0). Occupied by item2. Stays at (1,0).
-
-    expect(world.items.get(gridKey(1, 0))?.defId).toBe('item1');
-    expect(world.items.get(gridKey(2, 0))?.defId).toBe('item2');
+    // Tick 3: B3 empty. B1 has itemA2. B2 gets new itemB2.
+    addItem(world, { defId: 'itemB2', x: 1, y: 1, renderX: 1, renderY: 1, renderScale: 0 });
+    
+    tickWorld(world);
+    // lastInputIndex was 1. Next start index is (1+1)%2 = 0 (B1).
+    // B1 should move.
+    expect(world.items.get(gridKey(1, 0))?.defId).toBe('itemA2');
+    expect(world.items.get(gridKey(1, 1))?.defId).toBe('itemB2');
+    expect(world.items.has(gridKey(0, 0))).toBe(false);
   });
+
 });
