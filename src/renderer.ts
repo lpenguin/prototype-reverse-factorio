@@ -1,6 +1,7 @@
 import type { ViewState, WorldState, ItemInstance } from './types.ts';
 import { buildingsRegistry as registry } from './registry.ts';
 import { itemRegistry } from './registry.ts';
+import { gridKey } from './world.ts';
 
 /**
  * Re-render the infinite grid lines based on the current view box.
@@ -69,15 +70,26 @@ function renderPreview(worldGroup: SVGGElement, view: ViewState, world?: WorldSt
   const def = isErase ? null : registry.getBuilding(view.selectedBuildingId);
 
   // Check if position is occupied 
-  const isOccupied = world ? world.buildings.has(`${x},${y}`) : false;
+  const key = gridKey(x, y);
+  const isOccupied = world ? world.buildings.has(key) : false;
   
+  let isInvalidStatic = false;
+  if (world && def?.preferredStaticTypes && def.preferredStaticTypes.length > 0) {
+    const staticObj = world.staticObjects.get(key);
+    if (!staticObj || !def.preferredStaticTypes.includes(staticObj.type)) {
+      isInvalidStatic = true;
+    }
+  }
+
+  const isInvalid = isOccupied || isInvalidStatic;
+
   let color, strokeColor;
   if (isErase) {
     color = isOccupied ? 'rgba(255, 0, 0, 0.4)' : 'rgba(100, 100, 100, 0.2)';
     strokeColor = isOccupied ? 'rgba(255, 0, 0, 0.8)' : 'rgba(100, 100, 100, 0.4)';
   } else {
-    color = isOccupied ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 0, 0.2)';
-    strokeColor = isOccupied ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 255, 0, 0.5)';
+    color = isInvalid ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 0, 0.2)';
+    strokeColor = isInvalid ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 255, 0, 0.5)';
   }
 
   const cellSizeVal = cellSize;
@@ -218,14 +230,39 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
     const cy = item.renderY * 48 + 24;
     const def = itemRegistry.getItem(item.defId);
     if (!def) return;
-    const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-    img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', def.iconPath);
-    img.setAttribute('x', '-12');
-    img.setAttribute('y', '-12');
-    img.setAttribute('width', '24');
-    img.setAttribute('height', '24');
-    img.setAttribute('transform', `translate(${cx},${cy}) scale(${item.renderScale})`);
-    itemsLayer.appendChild(img);
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('transform', `translate(${cx},${cy}) scale(${item.renderScale})`);
+
+    const props = def.properties;
+    const size = (props.size as number) || 24;
+    const shape = (props.shape as string) || 'circle';
+    const color = (props.color as string) || '#888';
+
+    let element: SVGElement;
+
+    if (shape === 'circle') {
+      element = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      element.setAttribute('r', (size / 2).toString());
+      element.setAttribute('fill', color);
+    } else if (shape === 'triangle') {
+      element = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      const s = size;
+      const points = `0,-${s/2} ${s/2},${s/2} -${s/2},${s/2}`;
+      element.setAttribute('points', points);
+      element.setAttribute('fill', color);
+    } else {
+      // Default to square
+      element = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      element.setAttribute('x', (-size / 2).toString());
+      element.setAttribute('y', (-size / 2).toString());
+      element.setAttribute('width', size.toString());
+      element.setAttribute('height', size.toString());
+      element.setAttribute('fill', color);
+    }
+
+    g.appendChild(element);
+    itemsLayer.appendChild(g);
   };
 
   world.items.forEach(renderItem);

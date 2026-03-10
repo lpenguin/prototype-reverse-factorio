@@ -45,6 +45,7 @@ export interface BuildingDefinition {
   type: BuildingType;
   size: { x: number; y: number };
   iconPath: string; // URL to the external SVG
+  preferredStaticTypes?: string[];
   itemPool?: string[];
   ports?: Array<{
     type: 'input' | 'output';
@@ -63,7 +64,6 @@ export interface BaseBuilding {
 
 export interface Emitter extends BaseBuilding {
   type: 'emitter';
-  itemPool: string[]; // List of ItemDefinition IDs
 }
 
 export interface Belt extends BaseBuilding {
@@ -84,6 +84,7 @@ export interface StaticObject {
   type: 'garbage';
   x: number;
   y: number;
+  itemPool: string[];
 }
 
 /**

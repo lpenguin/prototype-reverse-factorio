@@ -8,6 +8,7 @@ class MapRegistry {
   public readonly density: number;
   public readonly minSize: number;
   public readonly maxSize: number;
+  public readonly itemPool: string[];
 
   constructor() {
     const config = mapConfig as any;
@@ -15,6 +16,7 @@ class MapRegistry {
     this.density = config.density;
     this.minSize = config.minSize ?? 5;
     this.maxSize = config.maxSize ?? 15;
+    this.itemPool = config.itemPool ?? [];
   }
 }
 

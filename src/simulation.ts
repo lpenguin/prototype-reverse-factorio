@@ -50,8 +50,13 @@ export function moveItem(
 
 class EmitterHandler extends BuildingHandler<Emitter> {
   tick(world: WorldState, emitter: Emitter, _ctx: TickContext): void {
-    if (emitter.itemPool.length === 0) return;
-    const itemDefId = emitter.itemPool[0];
+    const key = gridKey(emitter.x, emitter.y);
+    const staticObj = world.staticObjects.get(key);
+    if (!staticObj || staticObj.type !== 'garbage' || staticObj.itemPool.length === 0) return;
+
+    // Randomly pick an item from the item pool
+    const itemIndex = Math.floor(Math.random() * staticObj.itemPool.length);
+    const itemDefId = staticObj.itemPool[itemIndex];
     const { dx, dy } = getDirectionOffset(emitter.direction);
     const tx = emitter.x + dx;
     const ty = emitter.y + dy;

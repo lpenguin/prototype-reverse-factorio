@@ -1,11 +1,37 @@
 {
   "items": [
     {
-      "id": "orb",
-      "name": "Energy Orb",
-      "properties": {},
+      "id": "small-red-square",
+      "name": "Small Red Square",
+      "properties": {
+        "size": 10,
+        "shape": "square",
+        "color": "#ff4444"
+      },
+      "cost": 5,
+      "iconPath": ""
+    },
+    {
+      "id": "large-blue-circle",
+      "name": "Large Blue Circle",
+      "properties": {
+        "size": 20,
+        "shape": "circle",
+        "color": "#4444ff"
+      },
+      "cost": 15,
+      "iconPath": ""
+    },
+    {
+      "id": "medium-green-triangle",
+      "name": "Medium Green Triangle",
+      "properties": {
+        "size": 15,
+        "shape": "triangle",
+        "color": "#44ff44"
+      },
       "cost": 10,
-      "iconPath": "/icons/orb.svg"
+      "iconPath": ""
     }
   ]
 }

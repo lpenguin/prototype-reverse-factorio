@@ -1,6 +1,6 @@
 import type { WorldState, Building, ItemInstance, StaticObject } from './types.ts';
 import { Direction } from './types.ts';
-import { mapRegistry } from './registry.ts';
+import { mapRegistry, buildingsRegistry } from './registry.ts';
 
 /**
  * Convert grid coordinates to a consistent string key
@@ -67,7 +67,7 @@ function generateGarbage(world: WorldState) {
       visited.add(key);
       
       if (!world.staticObjects.has(key)) {
-        world.staticObjects.set(key, { type: 'garbage', x, y } as StaticObject);
+        world.staticObjects.set(key, { type: 'garbage', x, y, itemPool: mapRegistry.itemPool } as StaticObject);
         added++;
         
         // Add neighbors to queue in random order
@@ -83,11 +83,21 @@ function generateGarbage(world: WorldState) {
 
 /**
  * Place a building in the world
- * @returns true if building was placed, false if spot was occupied
+ * @returns true if building was placed, false if spot was occupied or invalid
  */
 export function placeBuilding(world: WorldState, building: Building): boolean {
   const key = gridKey(building.x, building.y);
   if (world.buildings.has(key)) return false;
+
+  // Check preferred static types
+  const def = buildingsRegistry.getAllBuildings().find(d => d.type === building.type);
+  if (def?.preferredStaticTypes && def.preferredStaticTypes.length > 0) {
+    const staticObj = world.staticObjects.get(key);
+    if (!staticObj || !def.preferredStaticTypes.includes(staticObj.type)) {
+      return false;
+    }
+  }
+
   world.buildings.set(key, building);
   return true;
 }
