@@ -33,6 +33,32 @@ export interface RequestDefinition {
 }
 
 /**
+ * Metadata about the map and generation settings
+ */
+export interface MapDefinition {
+  garbageRect: { x1: number; y1: number; x2: number; y2: number };
+  density: number;
+  minSize?: number;
+  maxSize?: number;
+  itemPool?: string[];
+}
+
+/**
+ * Configuration file structures
+ */
+export interface BuildingsConfig {
+  buildings: BuildingDefinition[];
+}
+
+export interface ItemsConfig {
+  items: ItemDefinition[];
+}
+
+export interface RequestsConfig {
+  requests: RequestDefinition[];
+}
+
+/**
  * An item instance on the grid
  */
 export interface ItemInstance {

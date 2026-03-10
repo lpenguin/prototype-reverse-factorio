@@ -1,9 +1,22 @@
-import type { BuildingDefinition, ItemDefinition, RequestDefinition } from './types.ts';
-import buildingsConfig from './buildings.config.json';
-import itemsConfig from './items.config.json';
-import mapConfig from './map.config.json';
-import requestsConfig from './requests.config.json';
+import type { 
+  BuildingDefinition, 
+  ItemDefinition, 
+  RequestDefinition,
+  MapDefinition,
+  BuildingsConfig,
+  ItemsConfig,
+  RequestsConfig
+} from './types.ts';
+import buildingsConfigJson from './buildings.config.json';
+import itemsConfigJson from './items.config.json';
+import mapConfigJson from './map.config.json';
+import requestsConfigJson from './requests.config.json';
 import colorNamesConfig from './colors.config.json';
+
+const buildingsConfig = buildingsConfigJson as BuildingsConfig;
+const itemsConfig = itemsConfigJson as ItemsConfig;
+const mapConfig = mapConfigJson as MapDefinition;
+const requestsConfig = requestsConfigJson as unknown as RequestsConfig;
 
 class MapRegistry {
   public readonly garbageRect: { x1: number; y1: number; x2: number; y2: number };
@@ -13,18 +26,11 @@ class MapRegistry {
   public readonly itemPool: string[];
 
   constructor() {
-    const config = mapConfig as {
-      garbageRect: { x1: number; y1: number; x2: number; y2: number };
-      density: number;
-      minSize?: number;
-      maxSize?: number;
-      itemPool?: string[];
-    };
-    this.garbageRect = config.garbageRect;
-    this.density = config.density;
-    this.minSize = config.minSize ?? 5;
-    this.maxSize = config.maxSize ?? 15;
-    this.itemPool = config.itemPool ?? [];
+    this.garbageRect = mapConfig.garbageRect;
+    this.density = mapConfig.density;
+    this.minSize = mapConfig.minSize ?? 5;
+    this.maxSize = mapConfig.maxSize ?? 15;
+    this.itemPool = mapConfig.itemPool ?? [];
   }
 }
 
@@ -33,7 +39,7 @@ class BuildingsRegistry {
 
   constructor() {
     for (const def of buildingsConfig.buildings) {
-      this.buildings.set(def.id, def as BuildingDefinition);
+      this.buildings.set(def.id, def);
     }
   }
 
@@ -52,7 +58,7 @@ class ItemRegistry {
 
   constructor() {
     for (const def of itemsConfig.items) {
-      this.items.set(def.id, def as ItemDefinition);
+      this.items.set(def.id, def);
     }
   }
 
@@ -83,8 +89,7 @@ class RequestRegistry {
   private nextRequestIndex: number = 0;
 
   constructor() {
-    const config = requestsConfig as unknown as { requests: RequestDefinition[] };
-    for (const request of config.requests) {
+    for (const request of requestsConfig.requests) {
       this.requests.push(request);
       this.requestMap.set(request.id, request);
     }
