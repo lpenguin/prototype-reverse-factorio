@@ -1,5 +1,5 @@
 import type { ViewState, WorldState, ItemInstance, Receiver } from './types.ts';
-import { buildingsRegistry as registry, itemRegistry, colorRegistry, requestRegistry } from './registry.ts';
+import { buildingsRegistry as registry, itemRegistry, propertyRegistry, requestRegistry } from './registry.ts';
 import { gridKey } from './world.ts';
 
 /**
@@ -234,9 +234,9 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
     g.setAttribute('transform', `translate(${cx},${cy}) scale(${item.renderScale})`);
 
     const props = def.properties;
-    const size = (props.size as number) || 24;
-    const shape = (props.shape as string) || 'circle';
-    const color = (props.color as string) || '#888';
+    const size = (propertyRegistry.getValue('size', props.size as string) as number) || 24;
+    const shape = (propertyRegistry.getValue('shape', props.shape as string) as string) || 'circle';
+    const color = (propertyRegistry.getValue('color', props.color as string) as string) || '#888';
 
     let element: SVGElement;
 
@@ -299,15 +299,13 @@ export function updateRequestPopup(world: WorldState, gridX: number, gridY: numb
         
         for (const [prop, condition] of Object.entries(request.properties)) {
           let valStr: string;
-          if (prop === 'color' && Array.isArray(condition)) {
+          if (prop === 'color') {
             valStr = condition.map(c => {
-              const name = colorRegistry.getColorName(c);
-              return `<span class="color-swatch" style="background-color: ${c}"></span>${name}`;
+              const val = propertyRegistry.getValue('color', c);
+              return `<span class="color-swatch" style="background-color: ${val}"></span>${c}`;
             }).join(', ');
-          } else if (Array.isArray(condition)) {
-            valStr = condition.join(', ');
           } else {
-            valStr = `${condition.min} - ${condition.max}`;
+            valStr = condition.join(', ');
           }
           content += `<div class="prop"><span class="prop-label">${prop}:</span><span>${valStr}</span></div>`;
         }

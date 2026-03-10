@@ -1,0 +1,31 @@
+{
+  "properties": [
+    {
+      "id": "color",
+      "name": "Color",
+      "values": {
+        "red": "#ff4444",
+        "green": "#44ff44",
+        "blue": "#4444ff"
+      }
+    },
+    {
+      "id": "shape",
+      "name": "Shape",
+      "values": {
+        "square": "square",
+        "circle": "circle",
+        "triangle": "triangle"
+      }
+    },
+    {
+      "id": "size",
+      "name": "Size",
+      "values": {
+        "small": 10,
+        "medium": 15,
+        "large": 20
+      }
+    }
+  ]
+}

@@ -22,12 +22,21 @@ export interface ItemDefinition {
 }
 
 /**
+ * Metadata about a property type
+ */
+export interface PropertyDefinition {
+  id: string;
+  name: string;
+  values: Record<string, string | number>;
+}
+
+/**
  * Metadata about a request
  */
 export interface RequestDefinition {
   id: string;
   name: string;
-  properties: Record<string, string[] | { min: number; max: number }>;
+  properties: Record<string, string[]>;
   cost: number;
   penalty: number;
 }
@@ -46,6 +55,10 @@ export interface MapDefinition {
 /**
  * Configuration file structures
  */
+export interface PropertiesConfig {
+  properties: PropertyDefinition[];
+}
+
 export interface BuildingsConfig {
   buildings: BuildingDefinition[];
 }

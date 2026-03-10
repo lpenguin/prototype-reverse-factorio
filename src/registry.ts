@@ -5,18 +5,21 @@ import type {
   MapDefinition,
   BuildingsConfig,
   ItemsConfig,
-  RequestsConfig
+  RequestsConfig,
+  PropertiesConfig,
+  PropertyDefinition
 } from './types.ts';
 import buildingsConfigJson from './buildings.config.json';
 import itemsConfigJson from './items.config.json';
 import mapConfigJson from './map.config.json';
 import requestsConfigJson from './requests.config.json';
-import colorNamesConfig from './colors.config.json';
+import propertiesConfigJson from './properties.config.json';
 
 const buildingsConfig = buildingsConfigJson as BuildingsConfig;
 const itemsConfig = itemsConfigJson as ItemsConfig;
 const mapConfig = mapConfigJson as MapDefinition;
 const requestsConfig = requestsConfigJson as unknown as RequestsConfig;
+const propertiesConfig = propertiesConfigJson as unknown as PropertiesConfig;
 
 class MapRegistry {
   public readonly garbageRect: { x1: number; y1: number; x2: number; y2: number };
@@ -71,15 +74,21 @@ class ItemRegistry {
   }
 }
 
-class ColorRegistry {
-  private colors: Record<string, string>;
+class PropertyRegistry {
+  private properties: Map<string, PropertyDefinition> = new Map();
 
   constructor() {
-    this.colors = colorNamesConfig;
+    for (const def of propertiesConfig.properties) {
+      this.properties.set(def.id, def);
+    }
   }
 
-  getColorName(hex: string): string {
-    return this.colors[hex.toLowerCase()] || hex;
+  getProperty(id: string): PropertyDefinition | undefined {
+    return this.properties.get(id);
+  }
+
+  getValue(propertyId: string, valueName: string): string | number | undefined {
+    return this.properties.get(propertyId)?.values[valueName];
   }
 }
 
@@ -115,5 +124,5 @@ export const buildingsRegistry = new BuildingsRegistry();
 export const itemRegistry = new ItemRegistry();
 export const mapRegistry = new MapRegistry();
 export const requestRegistry = new RequestRegistry();
-export const colorRegistry = new ColorRegistry();
+export const propertyRegistry = new PropertyRegistry();
 export default buildingsRegistry;

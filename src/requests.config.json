@@ -4,8 +4,8 @@
       "id": "small-red-stuff",
       "name": "Small Red Stuff",
       "properties": {
-        "color": ["#ff4444"],
-        "size": { "min": 0, "max": 12 }
+        "color": ["red"],
+        "size": ["small"]
       },
       "cost": 5,
       "penalty": 2
@@ -23,7 +23,7 @@
       "id": "green-or-blue",
       "name": "Green or Blue Items",
       "properties": {
-        "color": ["#44ff44", "#4444ff"]
+        "color": ["green", "blue"]
       },
       "cost": 10,
       "penalty": 5

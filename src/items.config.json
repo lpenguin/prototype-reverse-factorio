@@ -4,9 +4,9 @@
       "id": "small-red-square",
       "name": "Small Red Square",
       "properties": {
-        "size": 10,
+        "size": "small",
         "shape": "square",
-        "color": "#ff4444"
+        "color": "red"
       },
       "iconPath": ""
     },
@@ -14,9 +14,9 @@
       "id": "large-blue-circle",
       "name": "Large Blue Circle",
       "properties": {
-        "size": 20,
+        "size": "large",
         "shape": "circle",
-        "color": "#4444ff"
+        "color": "blue"
       },
       "iconPath": ""
     },
@@ -24,9 +24,9 @@
       "id": "medium-green-triangle",
       "name": "Medium Green Triangle",
       "properties": {
-        "size": 15,
+        "size": "medium",
         "shape": "triangle",
-        "color": "#44ff44"
+        "color": "green"
       },
       "iconPath": ""
     }

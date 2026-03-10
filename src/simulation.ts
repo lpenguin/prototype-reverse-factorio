@@ -128,17 +128,9 @@ class ReceiverHandler extends BuildingHandler<Receiver> {
     for (const [prop, condition] of Object.entries(request.properties)) {
       const itemValue = itemDef.properties[prop];
 
-      if (Array.isArray(condition)) {
-        if (!condition.includes(itemValue as string)) {
-          matches = false;
-          break;
-        }
-      } else {
-        const val = itemValue as number;
-        if (typeof val !== 'number' || val < condition.min || val > condition.max) {
-          matches = false;
-          break;
-        }
+      if (!condition.includes(String(itemValue))) {
+        matches = false;
+        break;
       }
     }
 
