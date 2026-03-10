@@ -78,11 +78,21 @@ export interface Receiver extends BaseBuilding {
 export type Building = Emitter | Belt | Receiver;
 
 /**
+ * Static objects on the map (e.g. garbage piles)
+ */
+export interface StaticObject {
+  type: 'garbage';
+  x: number;
+  y: number;
+}
+
+/**
  * Complete game state
  */
 export interface WorldState {
   buildings: Map<string, Building>; // Key format: "x,y"
   items: Map<string, ItemInstance>;   // Key format: "x,y"
+  staticObjects: Map<string, StaticObject>; // Key format: "x,y"
   playerMoney: number;
   tick: number;
   isPaused: boolean;

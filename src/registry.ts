@@ -1,6 +1,22 @@
 import type { BuildingDefinition, ItemDefinition } from './types.ts';
 import buildingsConfig from './buildings.config.json';
 import itemsConfig from './items.config.json';
+import mapConfig from './map.config.json';
+
+class MapRegistry {
+  public readonly garbageRect: { x1: number; y1: number; x2: number; y2: number };
+  public readonly density: number;
+  public readonly minSize: number;
+  public readonly maxSize: number;
+
+  constructor() {
+    const config = mapConfig as any;
+    this.garbageRect = config.garbageRect;
+    this.density = config.density;
+    this.minSize = config.minSize ?? 5;
+    this.maxSize = config.maxSize ?? 15;
+  }
+}
 
 class BuildingsRegistry {
   private buildings: Map<string, BuildingDefinition> = new Map();
@@ -40,4 +56,5 @@ class ItemRegistry {
 
 export const buildingsRegistry = new BuildingsRegistry();
 export const itemRegistry = new ItemRegistry();
+export const mapRegistry = new MapRegistry();
 export default buildingsRegistry;

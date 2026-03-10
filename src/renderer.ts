@@ -121,6 +121,56 @@ function renderPreview(worldGroup: SVGGElement, view: ViewState, world?: WorldSt
  * Stub function to render buildings and items.
  */
 export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: ViewState, dyingItems?: Map<string, ItemInstance>): void {
+  // Static objects layer
+  let staticLayer = worldGroup.querySelector('#static-layer') as SVGGElement;
+  if (!staticLayer) {
+    staticLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    staticLayer.id = 'static-layer';
+    worldGroup.prepend(staticLayer);
+  }
+  staticLayer.innerHTML = '';
+
+  world.staticObjects.forEach((obj) => {
+    if (obj.type === 'garbage') {
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const x = obj.x * 48;
+      const y = obj.y * 48;
+
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x.toString());
+      rect.setAttribute('y', y.toString());
+      rect.setAttribute('width', '48');
+      rect.setAttribute('height', '48');
+      rect.setAttribute('fill', '#a5a5a5');
+      rect.setAttribute('fill-opacity', '0.4');
+      g.appendChild(rect);
+
+      // Deterministic "random" lines
+      const seed = (obj.x * 374761393 + obj.y * 668265263) ^ 0x9e3779b9;
+      const pseudoRandom = (s: number) => {
+        const val = Math.sin(s) * 10000;
+        return val - Math.floor(val);
+      };
+
+      for (let i = 0; i < 4; i++) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        const lx1 = x + pseudoRandom(seed + i * 10) * 48;
+        const ly1 = y + pseudoRandom(seed + i * 10 + 1) * 48;
+        const lx2 = x + pseudoRandom(seed + i * 10 + 2) * 48;
+        const ly2 = y + pseudoRandom(seed + i * 10 + 3) * 48;
+        line.setAttribute('x1', lx1.toString());
+        line.setAttribute('y1', ly1.toString());
+        line.setAttribute('x2', lx2.toString());
+        line.setAttribute('y2', ly2.toString());
+        line.setAttribute('stroke', '#666');
+        line.setAttribute('stroke-width', '1.5');
+        g.appendChild(line);
+      }
+      staticLayer.appendChild(g);
+    }
+  });
+
+  // Buildings layer
   // Clear buildings (except grid and preview for now, but we'll manage it better)
   let layer = worldGroup.querySelector('#buildings-layer') as SVGGElement;
   if (!layer) {

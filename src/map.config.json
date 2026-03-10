@@ -1,0 +1,6 @@
+{
+  "garbageRect": { "x1": -15, "y1": -15, "x2": 15, "y2": 15 },
+  "density": 0.05,
+  "minSize": 5,
+  "maxSize": 20
+}
