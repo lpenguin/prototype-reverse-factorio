@@ -18,8 +18,18 @@ export interface ItemDefinition {
   id: string;
   name: string;
   properties: Record<string, string | number>;
-  cost: number;
   iconPath: string; // SVG path data
+}
+
+/**
+ * Metadata about a request
+ */
+export interface RequestDefinition {
+  id: string;
+  name: string;
+  properties: Record<string, string[] | { min: number; max: number }>;
+  cost: number;
+  penalty: number;
 }
 
 /**
@@ -73,6 +83,8 @@ export interface Belt extends BaseBuilding {
 
 export interface Receiver extends BaseBuilding {
   type: 'receiver';
+  requestId?: string;
+  lastInputIndex?: number;
 }
 
 export type Building = Emitter | Belt | Receiver;

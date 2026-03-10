@@ -1,6 +1,6 @@
 import type { WorldState, Building, ItemInstance, StaticObject } from './types.ts';
 import { Direction } from './types.ts';
-import { mapRegistry, buildingsRegistry } from './registry.ts';
+import { mapRegistry, buildingsRegistry, requestRegistry } from './registry.ts';
 
 /**
  * Convert grid coordinates to a consistent string key
@@ -96,6 +96,10 @@ export function placeBuilding(world: WorldState, building: Building): boolean {
     if (!staticObj || !def.preferredStaticTypes.includes(staticObj.type)) {
       return false;
     }
+  }
+
+  if (building.type === 'receiver') {
+    building.requestId = requestRegistry.getNextRequest()?.id;
   }
 
   world.buildings.set(key, building);

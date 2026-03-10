@@ -1,5 +1,5 @@
 import type { ViewState, WorldState, Direction, Building, ItemInstance } from './types.ts';
-import { renderGridLines, updateTransform, renderWorld } from './renderer.ts';
+import { renderGridLines, updateTransform, renderWorld, updateRequestPopup } from './renderer.ts';
 import { placeBuilding, gridKey, removeItem } from './world.ts';
 import { buildingsRegistry as registry } from './registry.ts';
 import { getHandler } from './simulation.ts';
@@ -46,7 +46,7 @@ export function setupInput(
     if (!def) return;
 
     const newBuilding: Building = {
-      type: def.type as any,
+      type: def.type,
       x: coords.x,
       y: coords.y,
       direction: viewState.selectedDirection,
@@ -158,6 +158,9 @@ export function setupInput(
       lastY = e.clientY;
       updateDisplay();
     }
+
+    // Update hover popup
+    updateRequestPopup(world, coords.x, coords.y, e.clientX, e.clientY);
   });
 
   window.addEventListener('keydown', (e) => {

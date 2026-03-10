@@ -1,0 +1,32 @@
+{
+  "requests": [
+    {
+      "id": "small-red-stuff",
+      "name": "Small Red Stuff",
+      "properties": {
+        "color": ["#ff4444"],
+        "size": { "min": 0, "max": 12 }
+      },
+      "cost": 5,
+      "penalty": 2
+    },
+    {
+      "id": "circular-objects",
+      "name": "Circular Objects",
+      "properties": {
+        "shape": ["circle"]
+      },
+      "cost": 15,
+      "penalty": 10
+    },
+    {
+      "id": "green-or-blue",
+      "name": "Green or Blue Items",
+      "properties": {
+        "color": ["#44ff44", "#4444ff"]
+      },
+      "cost": 10,
+      "penalty": 5
+    }
+  ]
+}

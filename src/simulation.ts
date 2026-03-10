@@ -1,5 +1,5 @@
 import type { WorldState, Building, BuildingType, ItemInstance, Emitter, Belt, Receiver } from './types.ts';
-import { itemRegistry } from './registry.ts';
+import { itemRegistry, requestRegistry } from './registry.ts';
 import { gridKey, getDirectionOffset, addItem } from './world.ts';
 
 export interface TickContext {
@@ -107,11 +107,47 @@ class ReceiverHandler extends BuildingHandler<Receiver> {
     // Receivers are passive
   }
 
-  accept(world: WorldState, _receiver: Receiver, item: ItemInstance): boolean {
-    const def = itemRegistry.getItem(item.defId);
-    if (def) {
-      world.playerMoney += def.cost;
+  accept(world: WorldState, receiver: Receiver, item: ItemInstance): boolean {
+    const itemDef = itemRegistry.getItem(item.defId);
+    if (!itemDef) return true;
+
+    if (!receiver.requestId) {
+      // If no request is assigned, we get nothing or maybe some default?
+      // The prompt says "if the received item matches the request we get item cost money"
+      // If there is no request, let's say it's just basic disposal (0 money) or we keep it as is if they still want some reward.
+      // Given the prompt "each receiver gets a round robin request", receivers should usually have one.
+      return true;
     }
+
+    const request = requestRegistry.getRequest(receiver.requestId);
+    if (!request) {
+      return true;
+    }
+
+    let matches = true;
+    for (const [prop, condition] of Object.entries(request.properties)) {
+      const itemValue = itemDef.properties[prop];
+
+      if (Array.isArray(condition)) {
+        if (!condition.includes(itemValue as string)) {
+          matches = false;
+          break;
+        }
+      } else {
+        const val = itemValue as number;
+        if (typeof val !== 'number' || val < condition.min || val > condition.max) {
+          matches = false;
+          break;
+        }
+      }
+    }
+
+    if (matches) {
+      world.playerMoney += request.cost;
+    } else {
+      world.playerMoney -= request.penalty;
+    }
+
     return true;
   }
 }

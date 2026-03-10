@@ -8,7 +8,6 @@
         "shape": "square",
         "color": "#ff4444"
       },
-      "cost": 5,
       "iconPath": ""
     },
     {
@@ -19,7 +18,6 @@
         "shape": "circle",
         "color": "#4444ff"
       },
-      "cost": 15,
       "iconPath": ""
     },
     {
@@ -30,7 +28,6 @@
         "shape": "triangle",
         "color": "#44ff44"
       },
-      "cost": 10,
       "iconPath": ""
     }
   ]

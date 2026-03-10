@@ -1,6 +1,5 @@
-import type { ViewState, WorldState, ItemInstance } from './types.ts';
-import { buildingsRegistry as registry } from './registry.ts';
-import { itemRegistry } from './registry.ts';
+import type { ViewState, WorldState, ItemInstance, Receiver } from './types.ts';
+import { buildingsRegistry as registry, itemRegistry, colorRegistry, requestRegistry } from './registry.ts';
 import { gridKey } from './world.ts';
 
 /**
@@ -279,4 +278,50 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
 export function updateHUD(world: WorldState): void {
   const hud = document.querySelector('#hud');
   if (hud) hud.textContent = `Money: $${world.playerMoney} | Tick: ${world.tick}`;
+}
+
+/**
+ * Show or hide the request popup based on hover
+ */
+export function updateRequestPopup(world: WorldState, gridX: number, gridY: number, screenX: number, screenY: number): void {
+  const popup = document.querySelector<HTMLDivElement>('#request-popup');
+  if (!popup) return;
+
+  const key = gridKey(gridX, gridY);
+  const building = world.buildings.get(key);
+
+  if (building?.type === 'receiver') {
+    const receiver = building as Receiver;
+    if (receiver.requestId) {
+      const request = requestRegistry.getRequest(receiver.requestId);
+      if (request) {
+        let content = `<h3>${request.name}</h3>`;
+        
+        for (const [prop, condition] of Object.entries(request.properties)) {
+          let valStr: string;
+          if (prop === 'color' && Array.isArray(condition)) {
+            valStr = condition.map(c => {
+              const name = colorRegistry.getColorName(c);
+              return `<span class="color-swatch" style="background-color: ${c}"></span>${name}`;
+            }).join(', ');
+          } else if (Array.isArray(condition)) {
+            valStr = condition.join(', ');
+          } else {
+            valStr = `${condition.min} - ${condition.max}`;
+          }
+          content += `<div class="prop"><span class="prop-label">${prop}:</span><span>${valStr}</span></div>`;
+        }
+        
+        content += `<div class="reward-info">Reward: $${request.cost} | Penalty: $${request.penalty}</div>`;
+        
+        popup.innerHTML = content;
+        popup.style.display = 'block';
+        popup.style.left = `${screenX + 20}px`;
+        popup.style.top = `${screenY + 20}px`;
+        return;
+      }
+    }
+  }
+
+  popup.style.display = 'none';
 }
