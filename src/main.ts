@@ -4,6 +4,7 @@ import { setupInput } from './input.ts';
 import { buildingsRegistry as registry } from './registry.ts';
 import { updateHUD, renderWorld } from './renderer.ts';
 import { tickWorld } from './simulation.ts';
+import { GameTimer } from './timer.ts';
 
 function init() {
   const world = createWorld();
@@ -118,7 +119,10 @@ function init() {
   });
 
   // Simulation tick — snapshot before tick to catch removed items
-  setInterval(() => {
+  // Render loop — lerp item render properties each frame
+  const timer = new GameTimer(TICK_MS);
+
+  timer.onTick(() => {
     if (world.isPaused) return;
     const snapshot = new Map(world.items);
     tickWorld(world);
@@ -129,15 +133,9 @@ function init() {
         dyingItems.set(key, item);
       }
     }
-  }, TICK_MS);
+  });
 
-  // Render loop — lerp item render properties each frame
-  let lastTime = performance.now();
-  function renderLoop() {
-    const now = performance.now();
-    const tDelta = (now - lastTime) / 1000;
-    lastTime = now;
-
+  timer.onFrame(tDelta => {
     world.items.forEach(item => {
       item.renderX += (item.x - item.renderX) * tDelta * LERP_SPEED;
       item.renderY += (item.y - item.renderY) * tDelta * LERP_SPEED;
@@ -157,9 +155,9 @@ function init() {
     }
 
     renderWorld(world, worldGroup, viewState, dyingItems);
-    requestAnimationFrame(renderLoop);
-  }
-  requestAnimationFrame(renderLoop);
+  });
+
+  timer.start();
 
   console.log('App initialized', world);
 }
