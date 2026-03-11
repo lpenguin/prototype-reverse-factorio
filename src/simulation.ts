@@ -1,4 +1,4 @@
-import type { WorldState, Building, BuildingType, ItemInstance, Emitter, Belt, Receiver } from './types.ts';
+import type { WorldState, Building, BuildingType, ItemInstance, Emitter, Belt, Receiver, Sorter } from './types.ts';
 import { itemRegistry, requestRegistry } from './registry.ts';
 import { gridKey, getDirectionOffset, addItem } from './world.ts';
 
@@ -46,6 +46,52 @@ export function moveItem(
   item.y = toY;
   world.items.set(toKey, item);
   return true;
+}
+
+/**
+ * Shared round-robin input evaluation.
+ *
+ * Given a list of source belt keys feeding into a building whose cell is
+ * `receiverKey`, evaluates each upstream belt (recursively, sink-to-source)
+ * and allows at most one item to flow in per tick — cycling sources in
+ * round-robin order based on `lastInputIndex`.
+ *
+ * Returns the updated lastInputIndex value (unchanged if nothing arrived).
+ */
+export function evaluateRoundRobinSources(
+  world: WorldState,
+  receiverKey: string,
+  sources: string[],
+  lastInputIndex: number | undefined,
+  beltMap: Map<string, Belt>,
+  evaluateBelt: (belt: Belt) => void,
+): number | undefined {
+  if (sources.length === 0) return lastInputIndex;
+
+  const sorted = [...sources].sort();
+  const canReceive = !world.items.has(receiverKey);
+  const startIndex = ((lastInputIndex ?? -1) + 1) % sorted.length;
+  const rotated = [
+    ...sorted.slice(startIndex),
+    ...sorted.slice(0, startIndex),
+  ];
+
+  let newLastInputIndex = lastInputIndex;
+  let receivedThisTick = false;
+
+  for (const sourceKey of rotated) {
+    const sourceBelt = beltMap.get(sourceKey);
+    if (sourceBelt) {
+      evaluateBelt(sourceBelt);
+
+      if (canReceive && !receivedThisTick && world.items.has(receiverKey)) {
+        newLastInputIndex = sorted.indexOf(sourceKey);
+        receivedThisTick = true;
+      }
+    }
+  }
+
+  return newLastInputIndex;
 }
 
 class EmitterHandler extends BuildingHandler<Emitter> {
@@ -112,10 +158,6 @@ class ReceiverHandler extends BuildingHandler<Receiver> {
     if (!itemDef) return true;
 
     if (!receiver.requestId) {
-      // If no request is assigned, we get nothing or maybe some default?
-      // The prompt says "if the received item matches the request we get item cost money"
-      // If there is no request, let's say it's just basic disposal (0 money) or we keep it as is if they still want some reward.
-      // Given the prompt "each receiver gets a round robin request", receivers should usually have one.
       return true;
     }
 
@@ -127,7 +169,6 @@ class ReceiverHandler extends BuildingHandler<Receiver> {
     let matches = true;
     for (const [prop, condition] of Object.entries(request.properties)) {
       const itemValue = itemDef.properties[prop];
-
       if (!condition.includes(String(itemValue))) {
         matches = false;
         break;
@@ -144,28 +185,119 @@ class ReceiverHandler extends BuildingHandler<Receiver> {
   }
 }
 
+class SorterHandler extends BuildingHandler<Sorter> {
+  /**
+   * Each tick the sorter:
+   * 1. Pushes any item sitting on its cell forward to the output cell.
+   * 2. If its own cell is now empty, pulls a matching item from the input cell.
+   *
+   * The "input cell" is the tile directly behind the sorter (opposite of its
+   * facing direction). The "output cell" is the tile directly in front.
+   */
+  tick(world: WorldState, sorter: Sorter, ctx: TickContext): void {
+    const key = gridKey(sorter.x, sorter.y);
+    const { dx, dy } = getDirectionOffset(sorter.direction);
+
+    // --- Step 1: push item already on the sorter cell to the output ---
+    const carried = world.items.get(key);
+    if (carried && !ctx.movedItems.has(key)) {
+      const outX = sorter.x + dx;
+      const outY = sorter.y + dy;
+      const moved = moveItem(world, sorter.x, sorter.y, outX, outY, ctx);
+      if (moved) {
+        ctx.movedItems.add(gridKey(outX, outY));
+      }
+    }
+
+    // --- Step 2: pull a matching item from the input cell ---
+    if (!world.items.has(key)) {
+      const inX = sorter.x - dx;
+      const inY = sorter.y - dy;
+      const inKey = gridKey(inX, inY);
+      const candidate = world.items.get(inKey);
+
+      if (candidate && !ctx.movedItems.has(inKey) && this.itemMatchesFilter(candidate, sorter)) {
+        const moved = moveItem(world, inX, inY, sorter.x, sorter.y, ctx);
+        if (moved) {
+          ctx.movedItems.add(key);
+        }
+      }
+    }
+  }
+
+  /**
+   * Accept an item pushed directly into the sorter cell (e.g. from a belt
+   * pointing into the sorter's front face). Only accepts if the item matches
+   * the configured filter and the cell is free.
+   */
+  accept(world: WorldState, sorter: Sorter, item: ItemInstance): boolean {
+    const key = gridKey(sorter.x, sorter.y);
+    if (world.items.has(key)) return false;
+    if (!this.itemMatchesFilter(item, sorter)) return false;
+    item.x = sorter.x;
+    item.y = sorter.y;
+    world.items.set(key, item);
+    return true;
+  }
+
+  /** Returns true if the item satisfies the sorter's property filter. */
+  itemMatchesFilter(item: ItemInstance, sorter: Sorter): boolean {
+    if (!sorter.filterProperty || !sorter.filterValue) return true; // no filter → pass all
+    const itemDef = itemRegistry.getItem(item.defId);
+    if (!itemDef) return false;
+    const val = String(itemDef.properties[sorter.filterProperty] ?? '');
+    return val === sorter.filterValue;
+  }
+}
+
+const sorterHandlerInstance = new SorterHandler();
+
 const handlers = new Map<BuildingType, BuildingHandler<Building>>([
   ['emitter', new EmitterHandler()],
   ['belt', new BeltHandler()],
   ['receiver', new ReceiverHandler()],
+  ['sorter', sorterHandlerInstance],
 ]);
 
 export function getHandler(type: BuildingType): BuildingHandler<Building> | undefined {
   return handlers.get(type);
 }
 
+export { sorterHandlerInstance as sorterHandler };
+
 /**
  * Advance the simulation by one tick.
+ *
+ * Evaluation order:
+ *   1. Belts: sink-to-source DFS with round-robin merge (prevents double-move).
+ *   2. Sorters: each sorter evaluates upstream belts (round-robin), then ticks.
+ *   3. Emitters: fire last so newly-spawned items wait a tick before moving.
  */
 export function tickWorld(world: WorldState): void {
   world.tick++;
   const ctx: TickContext = { movedItems: new Set() };
 
-  // 1. Identify all belts and build a dependency map (target -> sources)
+  // --- Build belt dependency graph ---
   const belts = Array.from(world.buildings.values()).filter(b => b.type === 'belt') as Belt[];
+  const sorters = Array.from(world.buildings.values()).filter(b => b.type === 'sorter') as Sorter[];
+
   const beltMap = new Map<string, Belt>();
-  const incoming = new Map<string, string[]>(); // targetKey -> sourceKeys[]
+  // beltIncoming: targetBeltKey → source belt keys
+  const beltIncoming = new Map<string, string[]>();
   const sinks: Belt[] = [];
+
+  // Map from a belt's key to the sorter(s) whose input cell it is.
+  // When the belt-phase DFS is about to tick such a belt, it first lets the
+  // sorter pull a matching item (giving the sorter priority over the receiver
+  // chain). The belt then ticks normally: if the sorter took the item the belt
+  // is already empty; if the sorter rejected it the item advances down the
+  // main line as usual.
+  const beltKeyToSorter = new Map<string, Sorter>();
+  for (const sorter of sorters) {
+    const { dx, dy } = getDirectionOffset(sorter.direction);
+    const inKey = gridKey(sorter.x - dx, sorter.y - dy);
+    beltKeyToSorter.set(inKey, sorter);
+  }
 
   for (const belt of belts) {
     const bKey = gridKey(belt.x, belt.y);
@@ -178,66 +310,97 @@ export function tickWorld(world: WorldState): void {
     const targetBuilding = world.buildings.get(targetKey);
 
     if (targetBuilding && targetBuilding.type === 'belt') {
-      if (!incoming.has(targetKey)) incoming.set(targetKey, []);
-      incoming.get(targetKey)!.push(bKey);
+      // belt → belt edge
+      if (!beltIncoming.has(targetKey)) beltIncoming.set(targetKey, []);
+      beltIncoming.get(targetKey)!.push(bKey);
     } else {
+      // Everything else (receiver, sorter output side, empty space): sink.
       sinks.push(belt);
     }
   }
 
-  // 2. Evaluate belts starting from sinks, moving backwards (Sink-to-Source order)
+  // sorterIncoming: sorterKey → list of belt keys that feed its input cell
+  const sorterIncoming = new Map<string, string[]>();
+  for (const sorter of sorters) {
+    const { dx, dy } = getDirectionOffset(sorter.direction);
+    const inKey = gridKey(sorter.x - dx, sorter.y - dy);
+    const sorterKey = gridKey(sorter.x, sorter.y);
+    if (beltMap.has(inKey)) {
+      if (!sorterIncoming.has(sorterKey)) sorterIncoming.set(sorterKey, []);
+      sorterIncoming.get(sorterKey)!.push(inKey);
+    }
+  }
+
+  // --- Sink-to-source belt evaluation ---
   const visited = new Set<string>();
+  // Tracks which sorters have already been evaluated (either inline during the
+  // belt phase or in the explicit sorter phase below).
+  const sorterVisited = new Set<string>();
   const beltHandler = getHandler('belt')!;
 
-  function evaluateBelt(belt: Belt) {
+  function evaluateBelt(belt: Belt): void {
     const key = gridKey(belt.x, belt.y);
     if (visited.has(key)) return;
     visited.add(key);
 
-    // Evaluate tick at this belt (moves item OUT)
-    beltHandler.tick(world, belt, ctx);
-
-    // Check if the belt is now empty and can receive an item
-    const canReceive = !world.items.has(key);
-
-    // Find belts pointing to this belt and evaluate them
-    const sources = incoming.get(key) || [];
-    if (sources.length > 0) {
-      sources.sort();
-      
-      // Calculate start index based on last successful input
-      const startIndex = ((belt.lastInputIndex ?? -1) + 1) % sources.length;
-      const rotatedSources = [
-        ...sources.slice(startIndex),
-        ...sources.slice(0, startIndex)
-      ];
-      
-      let receivedThisTick = false;
-      for (const sourceKey of rotatedSources) {
-        const sourceBelt = beltMap.get(sourceKey);
-        if (sourceBelt) {
-          evaluateBelt(sourceBelt);
-          
-          // If this source successfully moved an item into our belt, update the priority
-          if (canReceive && !receivedThisTick && world.items.has(key)) {
-            belt.lastInputIndex = sources.indexOf(sourceKey);
-            receivedThisTick = true;
-          }
-        }
+    // If this belt is the input cell of a sorter, let the sorter pull a
+    // matching item first (before the belt ticks). This gives the sorter
+    // priority: if it takes the item the belt will be empty when it ticks
+    // and the item moves down the sorter path; if it rejects the item the
+    // belt ticks normally and the item continues down the main line.
+    const pendingSorter = beltKeyToSorter.get(key);
+    if (pendingSorter) {
+      const sorterKey = gridKey(pendingSorter.x, pendingSorter.y);
+      if (!sorterVisited.has(sorterKey)) {
+        sorterVisited.add(sorterKey);
+        const { dx: sdx, dy: sdy } = getDirectionOffset(pendingSorter.direction);
+        const inputCellKey = gridKey(pendingSorter.x - sdx, pendingSorter.y - sdy);
+        const sources = sorterIncoming.get(sorterKey) || [];
+        pendingSorter.lastInputIndex = evaluateRoundRobinSources(
+          world, inputCellKey, sources, pendingSorter.lastInputIndex, beltMap, evaluateBelt,
+        );
+        getHandler('sorter')!.tick(world, pendingSorter, ctx);
       }
     }
+
+    // Push item OUT of this belt (after sorter had first pick)
+    beltHandler.tick(world, belt, ctx);
+
+    // Then pull from upstream sources in round-robin
+    const sources = beltIncoming.get(key) || [];
+    belt.lastInputIndex = evaluateRoundRobinSources(
+      world, key, sources, belt.lastInputIndex, beltMap, evaluateBelt,
+    );
   }
 
   for (const sink of sinks) {
     evaluateBelt(sink);
   }
-
-  // Handle any remaining belts (e.g. cycles not connected to a sink)
+  // Catch any remaining belts (cycles or isolated)
   for (const belt of belts) {
     evaluateBelt(belt);
   }
 
-  // 3. Emitters last — newly emitted items wait at least one tick before moving
+  // --- Sorter evaluation ---
+  // Handle sorters whose input belt was NOT reached by the belt-phase DFS
+  // (e.g. the belt-before-sorter is isolated or feeds nothing downstream).
+  for (const sorter of sorters) {
+    const sorterKey = gridKey(sorter.x, sorter.y);
+    if (sorterVisited.has(sorterKey)) continue; // already handled inline
+    sorterVisited.add(sorterKey);
+
+    const { dx, dy } = getDirectionOffset(sorter.direction);
+    const inputCellKey = gridKey(sorter.x - dx, sorter.y - dy);
+
+    const sources = sorterIncoming.get(sorterKey) || [];
+    sorter.lastInputIndex = evaluateRoundRobinSources(
+      world, inputCellKey, sources, sorter.lastInputIndex, beltMap, evaluateBelt,
+    );
+
+    getHandler('sorter')!.tick(world, sorter, ctx);
+  }
+
+  // --- Emitters last ---
   for (const building of world.buildings.values()) {
     if (building.type === 'emitter') {
       getHandler('emitter')!.tick(world, building, ctx);

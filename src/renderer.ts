@@ -1,4 +1,4 @@
-import type { ViewState, WorldState, ItemInstance, Receiver } from './types.ts';
+import type { ViewState, WorldState, ItemInstance, Receiver, Sorter } from './types.ts';
 import { buildingsRegistry as registry, itemRegistry, propertyRegistry, requestRegistry } from './registry.ts';
 import { gridKey } from './world.ts';
 
@@ -212,6 +212,56 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
       g.appendChild(icon);
     }
 
+    // Sorter overlay: input/output port markers + active filter label
+    if (building.type === 'sorter') {
+      const sorter = building as Sorter;
+
+      // Input port marker (behind = opposite of facing): small orange triangle pointing in
+      const inPort = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      inPort.setAttribute('points', `${centerX - 6},${y + 2} ${centerX + 6},${y + 2} ${centerX},${y + 10}`);
+      inPort.setAttribute('fill', '#ff9900');
+      inPort.setAttribute('opacity', '0.85');
+      inPort.setAttribute('transform', `rotate(${rotation + 180}, ${centerX}, ${centerY})`);
+      g.appendChild(inPort);
+
+      // Output port marker (front = facing direction): small green triangle pointing out
+      const outPort = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      outPort.setAttribute('points', `${centerX - 6},${y + 2} ${centerX + 6},${y + 2} ${centerX},${y + 10}`);
+      outPort.setAttribute('fill', '#44ff88');
+      outPort.setAttribute('opacity', '0.85');
+      outPort.setAttribute('transform', `rotate(${rotation}, ${centerX}, ${centerY})`);
+      g.appendChild(outPort);
+
+      // Filter label below the icon
+      if (sorter.filterProperty && sorter.filterValue) {
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', centerX.toString());
+        label.setAttribute('y', (y + 46).toString());
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('font-size', '9');
+        label.setAttribute('font-family', 'sans-serif');
+        label.setAttribute('fill', '#ffffff');
+        label.setAttribute('stroke', '#000');
+        label.setAttribute('stroke-width', '2');
+        label.setAttribute('paint-order', 'stroke');
+        label.textContent = `${sorter.filterProperty}:${sorter.filterValue}`;
+        g.appendChild(label);
+      } else {
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', centerX.toString());
+        label.setAttribute('y', (y + 46).toString());
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('font-size', '9');
+        label.setAttribute('font-family', 'sans-serif');
+        label.setAttribute('fill', '#ffcc44');
+        label.setAttribute('stroke', '#000');
+        label.setAttribute('stroke-width', '2');
+        label.setAttribute('paint-order', 'stroke');
+        label.textContent = 'any';
+        g.appendChild(label);
+      }
+    }
+
     layer.appendChild(g);
   });
 
@@ -278,6 +328,100 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
 export function updateHUD(world: WorldState): void {
   const hud = document.querySelector('#hud');
   if (hud) hud.textContent = `Money: $${world.playerMoney} | Tick: ${world.tick}`;
+}
+
+/**
+ * Open (or re-open) the sorter configuration dialog for the given sorter
+ * building. The dialog is a floating panel over the SVG that lets the player
+ * pick a property and value to filter on.
+ */
+export function openSorterDialog(sorter: Sorter, onClose?: () => void): void {
+  // Remove any existing dialog
+  document.querySelector('#sorter-dialog')?.remove();
+
+  const allProperties = propertyRegistry.getAllProperties();
+
+  const dialog = document.createElement('div');
+  dialog.id = 'sorter-dialog';
+
+  // Build options HTML
+  const propertyOptions = allProperties.map(p =>
+    `<option value="${p.id}" ${sorter.filterProperty === p.id ? 'selected' : ''}>${p.name}</option>`
+  ).join('');
+
+  const currentProp = allProperties.find(p => p.id === sorter.filterProperty) ?? allProperties[0];
+  const valueOptions = currentProp
+    ? Object.keys(currentProp.values).map(v =>
+        `<option value="${v}" ${sorter.filterValue === v ? 'selected' : ''}>${v}</option>`
+      ).join('')
+    : '';
+
+  dialog.innerHTML = `
+    <div class="sorter-dialog-header">
+      <span>Sorter Filter</span>
+      <button id="sorter-dialog-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="sorter-dialog-body">
+      <label>
+        Property
+        <select id="sorter-prop-select">${propertyOptions}</select>
+      </label>
+      <label>
+        Value
+        <select id="sorter-val-select">${valueOptions}</select>
+      </label>
+      <button id="sorter-clear-btn">Clear filter (pass all)</button>
+    </div>
+  `;
+
+  document.body.appendChild(dialog);
+
+  // Position near the center of the viewport
+  dialog.style.left = `${window.innerWidth / 2 - 120}px`;
+  dialog.style.top  = `${window.innerHeight / 2 - 80}px`;
+
+  const propSelect = dialog.querySelector<HTMLSelectElement>('#sorter-prop-select')!;
+  const valSelect  = dialog.querySelector<HTMLSelectElement>('#sorter-val-select')!;
+
+  const rebuildValueOptions = (propId: string, currentValue?: string) => {
+    const propDef = allProperties.find(p => p.id === propId);
+    if (!propDef) return;
+    valSelect.innerHTML = Object.keys(propDef.values).map(v =>
+      `<option value="${v}" ${v === currentValue ? 'selected' : ''}>${v}</option>`
+    ).join('');
+  };
+
+  propSelect.addEventListener('change', () => {
+    sorter.filterProperty = propSelect.value;
+    rebuildValueOptions(propSelect.value);
+    sorter.filterValue = valSelect.value;
+  });
+
+  valSelect.addEventListener('change', () => {
+    sorter.filterValue = valSelect.value;
+  });
+
+  // Initialise state from current sorter settings
+  if (sorter.filterProperty) {
+    propSelect.value = sorter.filterProperty;
+    rebuildValueOptions(sorter.filterProperty, sorter.filterValue);
+  } else {
+    // Default to first property + first value
+    sorter.filterProperty = propSelect.value;
+    sorter.filterValue = valSelect.value;
+  }
+
+  dialog.querySelector('#sorter-clear-btn')!.addEventListener('click', () => {
+    sorter.filterProperty = undefined;
+    sorter.filterValue = undefined;
+    dialog.remove();
+    onClose?.();
+  });
+
+  dialog.querySelector('#sorter-dialog-close')!.addEventListener('click', () => {
+    dialog.remove();
+    onClose?.();
+  });
 }
 
 /**

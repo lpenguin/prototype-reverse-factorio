@@ -90,6 +90,10 @@ class PropertyRegistry {
   getValue(propertyId: string, valueName: string): string | number | undefined {
     return this.properties.get(propertyId)?.values[valueName];
   }
+
+  getAllProperties(): PropertyDefinition[] {
+    return Array.from(this.properties.values());
+  }
 }
 
 class RequestRegistry {

@@ -1,5 +1,5 @@
-import type { ViewState, WorldState, Direction, Building, ItemInstance } from './types.ts';
-import { renderGridLines, updateTransform, renderWorld, updateRequestPopup } from './renderer.ts';
+import type { ViewState, WorldState, Direction, Building, ItemInstance, Sorter } from './types.ts';
+import { renderGridLines, updateTransform, renderWorld, updateRequestPopup, openSorterDialog } from './renderer.ts';
 import { placeBuilding, gridKey, removeItem } from './world.ts';
 import { buildingsRegistry as registry } from './registry.ts';
 import { getHandler } from './simulation.ts';
@@ -108,10 +108,16 @@ export function setupInput(
       } else if (viewState.selectedBuildingId) {
         tryPlace(coords);
       } else {
-        isPanning = true;
-        lastX = e.clientX;
-        lastY = e.clientY;
-        svgElement.setPointerCapture(e.pointerId);
+        // No tool selected — check if we clicked a sorter to open its dialog
+        const clickedBuilding = world.buildings.get(gridKey(coords.x, coords.y));
+        if (clickedBuilding?.type === 'sorter') {
+          openSorterDialog(clickedBuilding as Sorter, () => updateDisplay());
+        } else {
+          isPanning = true;
+          lastX = e.clientX;
+          lastY = e.clientY;
+          svgElement.setPointerCapture(e.pointerId);
+        }
       }
       updateDisplay();
     } else if (e.button === 2) { // Right-click

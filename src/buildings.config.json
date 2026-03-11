@@ -27,6 +27,17 @@
       "type": "belt",
       "size": { "x": 1, "y": 1 },
       "iconPath": "/icons/belt.svg"
+    },
+    {
+      "id": "sorter",
+      "name": "Sorter",
+      "type": "sorter",
+      "size": { "x": 1, "y": 1 },
+      "iconPath": "/icons/sorter.svg",
+      "ports": [
+        { "type": "input",  "x": 0, "y": 0, "direction": "W" },
+        { "type": "output", "x": 0, "y": 0, "direction": "E" }
+      ]
     }
   ]
 }
