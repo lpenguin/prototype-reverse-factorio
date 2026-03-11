@@ -392,12 +392,13 @@ function executeTickets(tickets: Ticket[], world: WorldState): void {
 
       const targetBuilding = world.buildings.get(targetKey);
       if (targetBuilding?.type === 'receiver') {
-        // Spawned directly into a receiver — score it
+        // Spawned directly into a receiver — score it; item visually travels emitter → receiver
         scoreReceiver(world, targetBuilding as import('./types.ts').Receiver, {
-          defId: itemDefId, x: ex, y: ey, renderX: ex, renderY: ey, renderScale: 0,
+          defId: itemDefId, x: tx, y: ty, renderX: ex, renderY: ey, renderScale: 0,
         });
       } else {
-        nextItems.set(targetKey, { defId: itemDefId, x: tx, y: ty, renderX: tx, renderY: ty, renderScale: 0 });
+        // Item appears at emitter cell (renderX/Y) and lerps to output cell (x/y)
+        nextItems.set(targetKey, { defId: itemDefId, x: tx, y: ty, renderX: ex, renderY: ey, renderScale: 0 });
       }
       updateLastAccepted(world, targetKey, emitterKey);
       continue;
@@ -406,6 +407,10 @@ function executeTickets(tickets: Ticket[], world: WorldState): void {
     // Real item
     const targetBuilding = world.buildings.get(targetKey);
     if (targetBuilding?.type === 'receiver') {
+      // Move item logically to the receiver cell so the dying animation
+      // lerps from the input cell into the receiver cell before fading out.
+      ticket.item.x = tx;
+      ticket.item.y = ty;
       // Consume the item — do NOT place in nextItems
       scoreReceiver(world, targetBuilding as import('./types.ts').Receiver, ticket.item);
       updateLastAccepted(world, targetKey, ticket.sourceKey);
