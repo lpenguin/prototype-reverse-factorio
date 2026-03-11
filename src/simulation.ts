@@ -1,21 +1,524 @@
-import type { WorldState, Building, BuildingType, ItemInstance, Emitter, Belt, Receiver, Sorter } from './types.ts';
-import { itemRegistry, requestRegistry } from './registry.ts';
-import { gridKey, getDirectionOffset, addItem } from './world.ts';
+/**
+ * simulation.ts — 3-phase tick algorithm
+ *
+ * Phase 1: Intent Generation
+ *   Every item (including virtual emitter items) declares an ordered list of
+ *   desired destination cells ("intents").
+ *
+ *   - Item on a Belt:  intents = [belt_forward]
+ *     Special case: if a Sorter claims this cell as its input cell AND the
+ *     item matches the sorter's filter, prepend the sorter cell as primary
+ *     intent (overflow = original belt_forward direction).  If the item does
+ *     NOT match, and the belt happens to point into the sorter cell, redirect
+ *     the intent to the sorter's output (skip the sorter cell).
+ *   - Item on a Sorter cell: intents = [sorter_output]
+ *   - Item on a bare cell claimed by a Sorter's input: if item matches, the
+ *     sorter generates a ticket on behalf of that item: intents = [sorterKey].
+ *   - Virtual Emitter item: intents = [emitter_forward]
+ *
+ * Phase 2: Iterative Resolution
+ *   Proposals are gathered, merge conflicts resolved by Round-Robin (clockwise
+ *   from last accepted direction), and DFS cycle detection unlocks circular
+ *   moving loops.  Losers / blocked items try their next intent (Overflow).
+ *
+ * Phase 3: Execution (double-buffer)
+ *   A new nextItems map is built.  LOCKED_MOVING items are placed in nextItems
+ *   at their target; BLOCKED items are kept at their current cell.
+ *   Emitter virtuals spawn new real items; receivers consume arriving items.
+ *   Round-robin state is updated, then world.items = nextItems.
+ */
 
-export interface TickContext {
-  movedItems: Set<string>;
+import type { WorldState, Building, BuildingType, ItemInstance, Direction, Sorter, Belt } from './types.ts';
+import { MoveState } from './types.ts';
+import { itemRegistry, requestRegistry } from './registry.ts';
+import { gridKey, getDirectionOffset } from './world.ts';
+
+// ---------------------------------------------------------------------------
+// Internal per-tick data structure
+// ---------------------------------------------------------------------------
+
+interface Ticket {
+  /** Stable key.  Real items: "x,y".  Virtual emitters: "emitter:x,y".  Sorter-pull: "pull:x,y". */
+  id: string;
+  /** Null for virtual emitter tickets. */
+  item: ItemInstance | null;
+  /** Source cell key (where the item currently is). */
+  sourceKey: string;
+  /** For virtual emitter tickets: emitter building key. */
+  emitterKey?: string;
+  /** Ordered list of candidate destination grid-keys. */
+  intents: string[];
+  /** Index into `intents` currently being tried. */
+  intentIndex: number;
+  /** Resolution state. */
+  state: MoveState;
 }
 
-abstract class BuildingHandler<T extends Building> {
-  abstract tick(world: WorldState, building: T, ctx: TickContext): void;
-  abstract accept(world: WorldState, building: T, item: ItemInstance): boolean;
+// ---------------------------------------------------------------------------
+// Helper: sorter filter check (exported for tests)
+// ---------------------------------------------------------------------------
+
+export function itemMatchesFilter(
+  item: ItemInstance,
+  filterProperty?: string,
+  filterValue?: string,
+): boolean {
+  if (!filterProperty || !filterValue) return true;
+  const itemDef = itemRegistry.getItem(item.defId);
+  if (!itemDef) return false;
+  return String(itemDef.properties[filterProperty] ?? '') === filterValue;
+}
+
+// ---------------------------------------------------------------------------
+// Direction utilities
+// ---------------------------------------------------------------------------
+
+/**
+ * The compass direction FROM which a mover at `sourceKey` arrives at `targetKey`.
+ * E.g. source=(0,0), target=(1,0): source is west of target → Direction.W (3).
+ * Coordinate convention: x increases East, y increases South. N=0,E=1,S=2,W=3.
+ */
+function arrivalDirection(sourceKey: string, targetKey: string): Direction {
+  const [sx, sy] = sourceKey.split(',').map(Number);
+  const [tx, ty] = targetKey.split(',').map(Number);
+  const dx = sx - tx; // positive → source is east of target
+  const dy = sy - ty; // positive → source is south of target
+  if (dx === -1) return 3 as Direction; // source is west  → arrives from W
+  if (dx ===  1) return 1 as Direction; // source is east  → arrives from E
+  if (dy === -1) return 0 as Direction; // source is north → arrives from N
+  if (dy ===  1) return 2 as Direction; // source is south → arrives from S
+  return 0 as Direction;
 }
 
 /**
- * Move an item from (fromX, fromY) to (toX, toY).
- * If a building occupies the destination, calls its accept().
- * Returns true if the item was moved or accepted.
+ * Clockwise priority for Round-Robin arbitration (lower = higher priority).
+ * Cycles clockwise starting from `(lastDir + 1) % 4`.
  */
+function cwPriority(arrivalDir: Direction, lastDir: Direction): number {
+  const start = (lastDir + 1) % 4;
+  return (arrivalDir - start + 4) % 4;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1: Intent Generation
+// ---------------------------------------------------------------------------
+
+function generateIntents(world: WorldState): Ticket[] {
+  const tickets: Ticket[] = [];
+  // sourceKey → ticket for real item-driven tickets (for sorter intent injection)
+  const ticketBySourceKey = new Map<string, Ticket>();
+
+  // --- Pass 1: base tickets for items on buildings ---
+
+  for (const [key, building] of world.buildings) {
+    if (building.type === 'emitter') {
+      const staticObj = world.staticObjects.get(key);
+      if (!staticObj || staticObj.type !== 'garbage' || staticObj.itemPool.length === 0) continue;
+      const { dx, dy } = getDirectionOffset(building.direction);
+      const targetKey = gridKey(building.x + dx, building.y + dy);
+      tickets.push({
+        id: `emitter:${key}`,
+        item: null,
+        sourceKey: key,
+        emitterKey: key,
+        intents: [targetKey],
+        intentIndex: 0,
+        state: MoveState.UNRESOLVED,
+      });
+      continue;
+    }
+
+    const item = world.items.get(key);
+    if (!item) continue;
+
+    if (building.type === 'belt') {
+      const belt = building as Belt;
+      const { dx, dy } = getDirectionOffset(belt.direction);
+      const fwdKey = gridKey(belt.x + dx, belt.y + dy);
+      const ticket: Ticket = {
+        id: key,
+        item,
+        sourceKey: key,
+        intents: [fwdKey],
+        intentIndex: 0,
+        state: MoveState.UNRESOLVED,
+      };
+      tickets.push(ticket);
+      ticketBySourceKey.set(key, ticket);
+    } else if (building.type === 'sorter') {
+      const sorter = building as Sorter;
+      const { dx, dy } = getDirectionOffset(sorter.direction);
+      const outKey = gridKey(sorter.x + dx, sorter.y + dy);
+      const ticket: Ticket = {
+        id: key,
+        item,
+        sourceKey: key,
+        intents: [outKey],
+        intentIndex: 0,
+        state: MoveState.UNRESOLVED,
+      };
+      tickets.push(ticket);
+      ticketBySourceKey.set(key, ticket);
+    }
+  }
+
+  // --- Pass 2: sorter intent injection ---
+  //
+  // For each sorter, check its input cell (the cell directly behind it).
+  // If there's a matching item there we need to give it a chance to enter
+  // the sorter — either by injecting the sorter cell into an existing belt
+  // ticket, or by creating a new "sorter-pull" ticket if no belt is present.
+
+  for (const [, building] of world.buildings) {
+    if (building.type !== 'sorter') continue;
+    const sorter = building as Sorter;
+
+    const { dx, dy } = getDirectionOffset(sorter.direction);
+    const inputKey  = gridKey(sorter.x - dx, sorter.y - dy);
+    const sorterKey = gridKey(sorter.x, sorter.y);
+    const sorterOutKey = gridKey(sorter.x + dx, sorter.y + dy);
+
+    const item = world.items.get(inputKey);
+    if (!item) continue;
+
+    const matches = itemMatchesFilter(item, sorter.filterProperty, sorter.filterValue);
+    const existingTicket = ticketBySourceKey.get(inputKey);
+
+    if (matches) {
+      if (existingTicket) {
+        // Inject sorter cell as primary intent, keep current intent as overflow
+        if (existingTicket.intents[0] === sorterKey) {
+          // Belt already points at sorter: add overflow = sorter's output
+          existingTicket.intents = [sorterKey, sorterOutKey];
+        } else {
+          // Side-pull: sorter is perpendicular — inject sorter as top priority
+          existingTicket.intents = [sorterKey, ...existingTicket.intents];
+        }
+      } else {
+        // No belt ticket — sorter generates a pull ticket for this item
+        const pullTicket: Ticket = {
+          id: `pull:${inputKey}`,
+          item,
+          sourceKey: inputKey,
+          intents: [sorterKey],
+          intentIndex: 0,
+          state: MoveState.UNRESOLVED,
+        };
+        tickets.push(pullTicket);
+        ticketBySourceKey.set(inputKey, pullTicket);
+      }
+    } else {
+      // Item does NOT match.
+      if (existingTicket && existingTicket.intents[0] === sorterKey) {
+        // Belt points into the sorter but item doesn't match → redirect past it
+        existingTicket.intents = [sorterOutKey];
+      }
+      // If no existing ticket or belt doesn't point at sorter, leave as-is.
+    }
+  }
+
+  return tickets;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Iterative Resolution
+// ---------------------------------------------------------------------------
+
+function checkCanMove(
+  ticket: Ticket,
+  states: Map<string, MoveState>,
+  ticketBySourceKey: Map<string, Ticket>,
+  world: WorldState,
+): boolean {
+  const state = states.get(ticket.id)!;
+
+  if (state === MoveState.LOCKED_MOVING) return true;
+  if (state === MoveState.BLOCKED)       return false;
+  if (state === MoveState.EVALUATING)    return true; // cycle detected → can move
+
+  states.set(ticket.id, MoveState.EVALUATING);
+
+  const targetKey = ticket.intents[ticket.intentIndex];
+  const targetBuilding = world.buildings.get(targetKey);
+
+  if (targetBuilding?.type === 'receiver') {
+    states.set(ticket.id, MoveState.UNRESOLVED);
+    return true;
+  }
+  if (!world.items.has(targetKey)) {
+    states.set(ticket.id, MoveState.UNRESOLVED);
+    return true;
+  }
+
+  const blockingTicket = ticketBySourceKey.get(targetKey);
+  if (!blockingTicket) {
+    states.set(ticket.id, MoveState.UNRESOLVED);
+    return false;
+  }
+
+  const canBlockerMove = checkCanMove(blockingTicket, states, ticketBySourceKey, world);
+  states.set(ticket.id, MoveState.UNRESOLVED);
+  return canBlockerMove;
+}
+
+function resolveIntents(tickets: Ticket[], world: WorldState): void {
+  const ticketBySourceKey = new Map<string, Ticket>();
+  for (const t of tickets) {
+    if (t.item) ticketBySourceKey.set(t.sourceKey, t);
+  }
+
+  const states = new Map<string, MoveState>();
+  for (const t of tickets) {
+    states.set(t.id, MoveState.UNRESOLVED);
+    t.state = MoveState.UNRESOLVED;
+  }
+
+  const getState = (t: Ticket) => states.get(t.id)!;
+  const setState = (t: Ticket, s: MoveState) => { states.set(t.id, s); t.state = s; };
+
+  let anyUnresolved = true;
+  while (anyUnresolved) {
+    anyUnresolved = false;
+
+    // Gather proposals
+    const proposals = new Map<string, Ticket[]>();
+    for (const t of tickets) {
+      if (getState(t) !== MoveState.UNRESOLVED) continue;
+      if (t.intentIndex >= t.intents.length) {
+        setState(t, MoveState.BLOCKED);
+        continue;
+      }
+      const target = t.intents[t.intentIndex];
+      if (!proposals.has(target)) proposals.set(target, []);
+      proposals.get(target)!.push(t);
+    }
+
+    if (proposals.size === 0) break;
+
+    // Arbitration
+    for (const [targetKey, proposers] of proposals) {
+      let winner: Ticket;
+
+      if (proposers.length === 1) {
+        winner = proposers[0];
+      } else {
+        const targetBuilding = world.buildings.get(targetKey);
+        const lastDir: Direction =
+          (targetBuilding as { lastInputIndex?: Direction } | undefined)?.lastInputIndex
+          ?? (3 as Direction);
+
+        let bestTicket: Ticket | null = null;
+        let bestPriority = Infinity;
+
+        for (const t of proposers) {
+          const arrDir = arrivalDirection(t.sourceKey, targetKey);
+          const priority = cwPriority(arrDir, lastDir);
+          if (priority < bestPriority) {
+            bestPriority = priority;
+            bestTicket = t;
+          }
+        }
+
+        winner = bestTicket!;
+
+        for (const t of proposers) {
+          if (t === winner) continue;
+          t.intentIndex++;
+          if (t.intentIndex >= t.intents.length) setState(t, MoveState.BLOCKED);
+          anyUnresolved = true;
+        }
+      }
+
+      if (getState(winner) !== MoveState.UNRESOLVED) continue;
+
+      const canMove = checkCanMove(winner, states, ticketBySourceKey, world);
+      if (canMove) {
+        setState(winner, MoveState.LOCKED_MOVING);
+        anyUnresolved = true;
+      } else {
+        winner.intentIndex++;
+        if (winner.intentIndex >= winner.intents.length) setState(winner, MoveState.BLOCKED);
+        anyUnresolved = true;
+      }
+    }
+  }
+
+  for (const t of tickets) {
+    if (t.state === MoveState.UNRESOLVED || t.state === MoveState.EVALUATING) {
+      t.state = MoveState.BLOCKED;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3: Execution (double-buffer)
+// ---------------------------------------------------------------------------
+
+function executeTickets(tickets: Ticket[], world: WorldState): void {
+  // Snapshot of the current items map — we read from this, write to nextItems
+  const prevItems = new Map(world.items);
+
+  // Next state: start with all BLOCKED items staying in place
+  const nextItems = new Map<string, ItemInstance>();
+  for (const t of tickets) {
+    if (t.item && t.state === MoveState.BLOCKED) {
+      nextItems.set(t.sourceKey, t.item);
+    }
+  }
+  // Also keep items that have no ticket (items on non-building cells that
+  // weren't involved in any ticket — shouldn't normally exist, but be safe)
+  for (const [key, item] of prevItems) {
+    if (!nextItems.has(key)) {
+      // Check if any ticket covers this item
+      const hasCoverage = tickets.some(t => t.item === item);
+      if (!hasCoverage) nextItems.set(key, item);
+    }
+  }
+
+  for (const ticket of tickets) {
+    if (ticket.state !== MoveState.LOCKED_MOVING) continue;
+
+    const targetKey = ticket.intents[ticket.intentIndex];
+    const [tx, ty] = targetKey.split(',').map(Number);
+
+    // Virtual emitter: spawn a new item
+    if (ticket.item === null) {
+      const emitterKey = ticket.emitterKey!;
+      const staticObj = world.staticObjects.get(emitterKey);
+      if (!staticObj || staticObj.itemPool.length === 0) continue;
+
+      const itemDefId = staticObj.itemPool[Math.floor(Math.random() * staticObj.itemPool.length)];
+      const [ex, ey] = emitterKey.split(',').map(Number);
+
+      const targetBuilding = world.buildings.get(targetKey);
+      if (targetBuilding?.type === 'receiver') {
+        // Spawned directly into a receiver — score it
+        scoreReceiver(world, targetBuilding as import('./types.ts').Receiver, {
+          defId: itemDefId, x: ex, y: ey, renderX: ex, renderY: ey, renderScale: 0,
+        });
+      } else {
+        nextItems.set(targetKey, { defId: itemDefId, x: tx, y: ty, renderX: tx, renderY: ty, renderScale: 0 });
+      }
+      updateLastAccepted(world, targetKey, emitterKey);
+      continue;
+    }
+
+    // Real item
+    const targetBuilding = world.buildings.get(targetKey);
+    if (targetBuilding?.type === 'receiver') {
+      // Consume the item — do NOT place in nextItems
+      scoreReceiver(world, targetBuilding as import('./types.ts').Receiver, ticket.item);
+      updateLastAccepted(world, targetKey, ticket.sourceKey);
+      continue;
+    }
+
+    // Normal move: place at target (source is simply absent from nextItems)
+    ticket.item.x = tx;
+    ticket.item.y = ty;
+    nextItems.set(targetKey, ticket.item);
+    updateLastAccepted(world, targetKey, ticket.sourceKey);
+  }
+
+  // Swap buffer
+  world.items = nextItems;
+}
+
+function scoreReceiver(
+  world: WorldState,
+  receiver: import('./types.ts').Receiver,
+  item: ItemInstance,
+): void {
+  const itemDef = itemRegistry.getItem(item.defId);
+  if (!itemDef || !receiver.requestId) return;
+  const request = requestRegistry.getRequest(receiver.requestId);
+  if (!request) return;
+
+  let matches = true;
+  for (const [prop, condition] of Object.entries(request.properties)) {
+    if (!condition.includes(String(itemDef.properties[prop]))) { matches = false; break; }
+  }
+  world.playerMoney += matches ? request.cost : -request.penalty;
+}
+
+function updateLastAccepted(world: WorldState, targetKey: string, sourceKey: string): void {
+  const b = world.buildings.get(targetKey);
+  if (!b) return;
+  (b as { lastInputIndex?: Direction }).lastInputIndex = arrivalDirection(sourceKey, targetKey);
+}
+
+// ---------------------------------------------------------------------------
+// Building handlers (kept for legacy compat and receiver accept())
+// ---------------------------------------------------------------------------
+
+abstract class BuildingHandler<T extends Building> {
+  abstract accept(world: WorldState, building: T, item: ItemInstance): boolean;
+}
+
+class ReceiverHandler extends BuildingHandler<import('./types.ts').Receiver> {
+  accept(world: WorldState, receiver: import('./types.ts').Receiver, item: ItemInstance): boolean {
+    scoreReceiver(world, receiver, item);
+    return true;
+  }
+}
+
+class BeltHandler extends BuildingHandler<Belt> {
+  accept(world: WorldState, belt: Belt, item: ItemInstance): boolean {
+    const key = gridKey(belt.x, belt.y);
+    if (world.items.has(key)) return false;
+    item.x = belt.x; item.y = belt.y;
+    world.items.set(key, item);
+    return true;
+  }
+}
+
+class SorterHandler extends BuildingHandler<Sorter> {
+  accept(world: WorldState, sorter: Sorter, item: ItemInstance): boolean {
+    const key = gridKey(sorter.x, sorter.y);
+    if (world.items.has(key)) return false;
+    if (!itemMatchesFilter(item, sorter.filterProperty, sorter.filterValue)) return false;
+    item.x = sorter.x; item.y = sorter.y;
+    world.items.set(key, item);
+    return true;
+  }
+}
+
+const handlers = new Map<BuildingType, BuildingHandler<Building>>([
+  ['emitter',  new (class extends BuildingHandler<import('./types.ts').Emitter> {
+    accept() { return false; }
+  })()],
+  ['belt',     new BeltHandler()],
+  ['receiver', new ReceiverHandler()],
+  ['sorter',   new SorterHandler()],
+]);
+
+export function getHandler(type: BuildingType): BuildingHandler<Building> | undefined {
+  return handlers.get(type);
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+export function tickWorld(world: WorldState): void {
+  world.tick++;
+  const tickets = generateIntents(world);
+  resolveIntents(tickets, world);
+  executeTickets(tickets, world);
+}
+
+// ---------------------------------------------------------------------------
+// Legacy exports (backward-compat)
+// ---------------------------------------------------------------------------
+
+export const sorterHandler = {
+  itemMatchesFilter: (
+    item: ItemInstance,
+    sorter: { filterProperty?: string; filterValue?: string },
+  ) => itemMatchesFilter(item, sorter.filterProperty, sorter.filterValue),
+};
+
+export interface TickContext { movedItems: Set<string>; }
+
 export function moveItem(
   world: WorldState,
   fromX: number, fromY: number,
@@ -23,387 +526,33 @@ export function moveItem(
   _ctx: TickContext,
 ): boolean {
   const fromKey = gridKey(fromX, fromY);
-  const toKey = gridKey(toX, toY);
+  const toKey   = gridKey(toX, toY);
   const item = world.items.get(fromKey);
   if (!item) return false;
-
   const targetBuilding = world.buildings.get(toKey);
   if (targetBuilding) {
     const handler = getHandler(targetBuilding.type);
-    if (handler && handler.accept(world, targetBuilding, item)) {
-      item.x = toX;
-      item.y = toY;
+    if (handler?.accept(world, targetBuilding as never, item)) {
+      item.x = toX; item.y = toY;
       world.items.delete(fromKey);
       return true;
     }
     return false;
   }
-
   if (world.items.has(toKey)) return false;
-
   world.items.delete(fromKey);
-  item.x = toX;
-  item.y = toY;
+  item.x = toX; item.y = toY;
   world.items.set(toKey, item);
   return true;
 }
 
-/**
- * Shared round-robin input evaluation.
- *
- * Given a list of source belt keys feeding into a building whose cell is
- * `receiverKey`, evaluates each upstream belt (recursively, sink-to-source)
- * and allows at most one item to flow in per tick — cycling sources in
- * round-robin order based on `lastInputIndex`.
- *
- * Returns the updated lastInputIndex value (unchanged if nothing arrived).
- */
 export function evaluateRoundRobinSources(
-  world: WorldState,
-  receiverKey: string,
-  sources: string[],
+  _world: WorldState,
+  _receiverKey: string,
+  _sources: string[],
   lastInputIndex: number | undefined,
-  beltMap: Map<string, Belt>,
-  evaluateBelt: (belt: Belt) => void,
+  _beltMap: Map<Belt, Belt>,
+  _evaluateBelt: (belt: Belt) => void,
 ): number | undefined {
-  if (sources.length === 0) return lastInputIndex;
-
-  const sorted = [...sources].sort();
-  const canReceive = !world.items.has(receiverKey);
-  const startIndex = ((lastInputIndex ?? -1) + 1) % sorted.length;
-  const rotated = [
-    ...sorted.slice(startIndex),
-    ...sorted.slice(0, startIndex),
-  ];
-
-  let newLastInputIndex = lastInputIndex;
-  let receivedThisTick = false;
-
-  for (const sourceKey of rotated) {
-    const sourceBelt = beltMap.get(sourceKey);
-    if (sourceBelt) {
-      evaluateBelt(sourceBelt);
-
-      if (canReceive && !receivedThisTick && world.items.has(receiverKey)) {
-        newLastInputIndex = sorted.indexOf(sourceKey);
-        receivedThisTick = true;
-      }
-    }
-  }
-
-  return newLastInputIndex;
-}
-
-class EmitterHandler extends BuildingHandler<Emitter> {
-  tick(world: WorldState, emitter: Emitter, _ctx: TickContext): void {
-    const key = gridKey(emitter.x, emitter.y);
-    const staticObj = world.staticObjects.get(key);
-    if (!staticObj || staticObj.type !== 'garbage' || staticObj.itemPool.length === 0) return;
-
-    // Randomly pick an item from the item pool
-    const itemIndex = Math.floor(Math.random() * staticObj.itemPool.length);
-    const itemDefId = staticObj.itemPool[itemIndex];
-    const { dx, dy } = getDirectionOffset(emitter.direction);
-    const tx = emitter.x + dx;
-    const ty = emitter.y + dy;
-    if (world.items.has(gridKey(tx, ty))) return;
-
-    const targetBuilding = world.buildings.get(gridKey(tx, ty));
-    if (targetBuilding) {
-      const handler = getHandler(targetBuilding.type);
-      if (handler) {
-        handler.accept(world, targetBuilding as never, { defId: itemDefId, x: emitter.x, y: emitter.y, renderX: emitter.x, renderY: emitter.y, renderScale: 0 });
-      }
-      return;
-    }
-    addItem(world, { defId: itemDefId, x: tx, y: ty, renderX: tx, renderY: ty, renderScale: 0 });
-  }
-
-  accept(_world: WorldState, _emitter: Emitter, _item: ItemInstance): boolean {
-    return false;
-  }
-}
-
-class BeltHandler extends BuildingHandler<Belt> {
-  tick(world: WorldState, belt: Belt, ctx: TickContext): void {
-    const key = gridKey(belt.x, belt.y);
-    const item = world.items.get(key);
-    if (!item || ctx.movedItems.has(key)) return;
-    const { dx, dy } = getDirectionOffset(belt.direction);
-    const tx = belt.x + dx;
-    const ty = belt.y + dy;
-    const moved = moveItem(world, belt.x, belt.y, tx, ty, ctx);
-    if (moved) {
-      ctx.movedItems.add(gridKey(tx, ty));
-    }
-  }
-
-  accept(world: WorldState, belt: Belt, item: ItemInstance): boolean {
-    const key = gridKey(belt.x, belt.y);
-    if (world.items.has(key)) return false;
-    item.x = belt.x;
-    item.y = belt.y;
-    world.items.set(key, item);
-    return true;
-  }
-}
-
-class ReceiverHandler extends BuildingHandler<Receiver> {
-  tick(_world: WorldState, _receiver: Receiver, _ctx: TickContext): void {
-    // Receivers are passive
-  }
-
-  accept(world: WorldState, receiver: Receiver, item: ItemInstance): boolean {
-    const itemDef = itemRegistry.getItem(item.defId);
-    if (!itemDef) return true;
-
-    if (!receiver.requestId) {
-      return true;
-    }
-
-    const request = requestRegistry.getRequest(receiver.requestId);
-    if (!request) {
-      return true;
-    }
-
-    let matches = true;
-    for (const [prop, condition] of Object.entries(request.properties)) {
-      const itemValue = itemDef.properties[prop];
-      if (!condition.includes(String(itemValue))) {
-        matches = false;
-        break;
-      }
-    }
-
-    if (matches) {
-      world.playerMoney += request.cost;
-    } else {
-      world.playerMoney -= request.penalty;
-    }
-
-    return true;
-  }
-}
-
-class SorterHandler extends BuildingHandler<Sorter> {
-  /**
-   * Each tick the sorter:
-   * 1. Pushes any item sitting on its cell forward to the output cell.
-   * 2. If its own cell is now empty, pulls a matching item from the input cell.
-   *
-   * The "input cell" is the tile directly behind the sorter (opposite of its
-   * facing direction). The "output cell" is the tile directly in front.
-   */
-  tick(world: WorldState, sorter: Sorter, ctx: TickContext): void {
-    const key = gridKey(sorter.x, sorter.y);
-    const { dx, dy } = getDirectionOffset(sorter.direction);
-
-    // --- Step 1: push item already on the sorter cell to the output ---
-    const carried = world.items.get(key);
-    if (carried && !ctx.movedItems.has(key)) {
-      const outX = sorter.x + dx;
-      const outY = sorter.y + dy;
-      const moved = moveItem(world, sorter.x, sorter.y, outX, outY, ctx);
-      if (moved) {
-        ctx.movedItems.add(gridKey(outX, outY));
-      }
-    }
-
-    // --- Step 2: pull a matching item from the input cell ---
-    if (!world.items.has(key)) {
-      const inX = sorter.x - dx;
-      const inY = sorter.y - dy;
-      const inKey = gridKey(inX, inY);
-      const candidate = world.items.get(inKey);
-
-      if (candidate && !ctx.movedItems.has(inKey) && this.itemMatchesFilter(candidate, sorter)) {
-        const moved = moveItem(world, inX, inY, sorter.x, sorter.y, ctx);
-        if (moved) {
-          ctx.movedItems.add(key);
-        }
-      }
-    }
-  }
-
-  /**
-   * Accept an item pushed directly into the sorter cell (e.g. from a belt
-   * pointing into the sorter's front face). Only accepts if the item matches
-   * the configured filter and the cell is free.
-   */
-  accept(world: WorldState, sorter: Sorter, item: ItemInstance): boolean {
-    const key = gridKey(sorter.x, sorter.y);
-    if (world.items.has(key)) return false;
-    if (!this.itemMatchesFilter(item, sorter)) return false;
-    item.x = sorter.x;
-    item.y = sorter.y;
-    world.items.set(key, item);
-    return true;
-  }
-
-  /** Returns true if the item satisfies the sorter's property filter. */
-  itemMatchesFilter(item: ItemInstance, sorter: Sorter): boolean {
-    if (!sorter.filterProperty || !sorter.filterValue) return true; // no filter → pass all
-    const itemDef = itemRegistry.getItem(item.defId);
-    if (!itemDef) return false;
-    const val = String(itemDef.properties[sorter.filterProperty] ?? '');
-    return val === sorter.filterValue;
-  }
-}
-
-const sorterHandlerInstance = new SorterHandler();
-
-const handlers = new Map<BuildingType, BuildingHandler<Building>>([
-  ['emitter', new EmitterHandler()],
-  ['belt', new BeltHandler()],
-  ['receiver', new ReceiverHandler()],
-  ['sorter', sorterHandlerInstance],
-]);
-
-export function getHandler(type: BuildingType): BuildingHandler<Building> | undefined {
-  return handlers.get(type);
-}
-
-export { sorterHandlerInstance as sorterHandler };
-
-/**
- * Advance the simulation by one tick.
- *
- * Evaluation order:
- *   1. Belts: sink-to-source DFS with round-robin merge (prevents double-move).
- *   2. Sorters: each sorter evaluates upstream belts (round-robin), then ticks.
- *   3. Emitters: fire last so newly-spawned items wait a tick before moving.
- */
-export function tickWorld(world: WorldState): void {
-  world.tick++;
-  const ctx: TickContext = { movedItems: new Set() };
-
-  // --- Build belt dependency graph ---
-  const belts = Array.from(world.buildings.values()).filter(b => b.type === 'belt') as Belt[];
-  const sorters = Array.from(world.buildings.values()).filter(b => b.type === 'sorter') as Sorter[];
-
-  const beltMap = new Map<string, Belt>();
-  // beltIncoming: targetBeltKey → source belt keys
-  const beltIncoming = new Map<string, string[]>();
-  const sinks: Belt[] = [];
-
-  // Map from a belt's key to the sorter(s) whose input cell it is.
-  // When the belt-phase DFS is about to tick such a belt, it first lets the
-  // sorter pull a matching item (giving the sorter priority over the receiver
-  // chain). The belt then ticks normally: if the sorter took the item the belt
-  // is already empty; if the sorter rejected it the item advances down the
-  // main line as usual.
-  const beltKeyToSorter = new Map<string, Sorter>();
-  for (const sorter of sorters) {
-    const { dx, dy } = getDirectionOffset(sorter.direction);
-    const inKey = gridKey(sorter.x - dx, sorter.y - dy);
-    beltKeyToSorter.set(inKey, sorter);
-  }
-
-  for (const belt of belts) {
-    const bKey = gridKey(belt.x, belt.y);
-    beltMap.set(bKey, belt);
-
-    const { dx, dy } = getDirectionOffset(belt.direction);
-    const tx = belt.x + dx;
-    const ty = belt.y + dy;
-    const targetKey = gridKey(tx, ty);
-    const targetBuilding = world.buildings.get(targetKey);
-
-    if (targetBuilding && targetBuilding.type === 'belt') {
-      // belt → belt edge
-      if (!beltIncoming.has(targetKey)) beltIncoming.set(targetKey, []);
-      beltIncoming.get(targetKey)!.push(bKey);
-    } else {
-      // Everything else (receiver, sorter output side, empty space): sink.
-      sinks.push(belt);
-    }
-  }
-
-  // sorterIncoming: sorterKey → list of belt keys that feed its input cell
-  const sorterIncoming = new Map<string, string[]>();
-  for (const sorter of sorters) {
-    const { dx, dy } = getDirectionOffset(sorter.direction);
-    const inKey = gridKey(sorter.x - dx, sorter.y - dy);
-    const sorterKey = gridKey(sorter.x, sorter.y);
-    if (beltMap.has(inKey)) {
-      if (!sorterIncoming.has(sorterKey)) sorterIncoming.set(sorterKey, []);
-      sorterIncoming.get(sorterKey)!.push(inKey);
-    }
-  }
-
-  // --- Sink-to-source belt evaluation ---
-  const visited = new Set<string>();
-  // Tracks which sorters have already been evaluated (either inline during the
-  // belt phase or in the explicit sorter phase below).
-  const sorterVisited = new Set<string>();
-  const beltHandler = getHandler('belt')!;
-
-  function evaluateBelt(belt: Belt): void {
-    const key = gridKey(belt.x, belt.y);
-    if (visited.has(key)) return;
-    visited.add(key);
-
-    // If this belt is the input cell of a sorter, let the sorter pull a
-    // matching item first (before the belt ticks). This gives the sorter
-    // priority: if it takes the item the belt will be empty when it ticks
-    // and the item moves down the sorter path; if it rejects the item the
-    // belt ticks normally and the item continues down the main line.
-    const pendingSorter = beltKeyToSorter.get(key);
-    if (pendingSorter) {
-      const sorterKey = gridKey(pendingSorter.x, pendingSorter.y);
-      if (!sorterVisited.has(sorterKey)) {
-        sorterVisited.add(sorterKey);
-        const { dx: sdx, dy: sdy } = getDirectionOffset(pendingSorter.direction);
-        const inputCellKey = gridKey(pendingSorter.x - sdx, pendingSorter.y - sdy);
-        const sources = sorterIncoming.get(sorterKey) || [];
-        pendingSorter.lastInputIndex = evaluateRoundRobinSources(
-          world, inputCellKey, sources, pendingSorter.lastInputIndex, beltMap, evaluateBelt,
-        );
-        getHandler('sorter')!.tick(world, pendingSorter, ctx);
-      }
-    }
-
-    // Push item OUT of this belt (after sorter had first pick)
-    beltHandler.tick(world, belt, ctx);
-
-    // Then pull from upstream sources in round-robin
-    const sources = beltIncoming.get(key) || [];
-    belt.lastInputIndex = evaluateRoundRobinSources(
-      world, key, sources, belt.lastInputIndex, beltMap, evaluateBelt,
-    );
-  }
-
-  for (const sink of sinks) {
-    evaluateBelt(sink);
-  }
-  // Catch any remaining belts (cycles or isolated)
-  for (const belt of belts) {
-    evaluateBelt(belt);
-  }
-
-  // --- Sorter evaluation ---
-  // Handle sorters whose input belt was NOT reached by the belt-phase DFS
-  // (e.g. the belt-before-sorter is isolated or feeds nothing downstream).
-  for (const sorter of sorters) {
-    const sorterKey = gridKey(sorter.x, sorter.y);
-    if (sorterVisited.has(sorterKey)) continue; // already handled inline
-    sorterVisited.add(sorterKey);
-
-    const { dx, dy } = getDirectionOffset(sorter.direction);
-    const inputCellKey = gridKey(sorter.x - dx, sorter.y - dy);
-
-    const sources = sorterIncoming.get(sorterKey) || [];
-    sorter.lastInputIndex = evaluateRoundRobinSources(
-      world, inputCellKey, sources, sorter.lastInputIndex, beltMap, evaluateBelt,
-    );
-
-    getHandler('sorter')!.tick(world, sorter, ctx);
-  }
-
-  // --- Emitters last ---
-  for (const building of world.buildings.values()) {
-    if (building.type === 'emitter') {
-      getHandler('emitter')!.tick(world, building, ctx);
-    }
-  }
+  return lastInputIndex;
 }

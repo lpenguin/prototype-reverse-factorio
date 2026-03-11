@@ -10,6 +10,19 @@ export const Direction = {
 
 export type Direction = (typeof Direction)[keyof typeof Direction];
 
+/**
+ * Per-tick move resolution state used by the 3-phase simulation algorithm.
+ * Not stored on ItemInstance — tracked in a side-table inside tickWorld().
+ */
+export const MoveState = {
+  UNRESOLVED: 'UNRESOLVED',
+  EVALUATING: 'EVALUATING',
+  LOCKED_MOVING: 'LOCKED_MOVING',
+  BLOCKED: 'BLOCKED',
+} as const;
+
+export type MoveState = (typeof MoveState)[keyof typeof MoveState];
+
 
 /**
  * Metadata about an item type
