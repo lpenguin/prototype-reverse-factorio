@@ -1,4 +1,266 @@
-<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <rect x="10" y="10" width="80" height="80" fill="none" stroke="black" stroke-width="5"/>
-  <path d="M 50 20 L 80 50 L 50 80 Z" fill="green"/>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 100 100"
+   width="128"
+   height="128"
+   version="1.1"
+   id="svg14"
+   sodipodi:docname="spawner.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview14"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="2.135131"
+     inkscape:cx="-35.829183"
+     inkscape:cy="101.86728"
+     inkscape:window-width="1920"
+     inkscape:window-height="991"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg14" />
+  <defs
+     id="defs8">
+    <!-- Безопасная тень для Inkscape -->
+    <filter
+       id="safe-shadow"
+       x="-0.1025"
+       y="-0.18222222"
+       width="1.23"
+       height="1.4533333">
+      <feGaussianBlur
+         in="SourceAlpha"
+         stdDeviation="3"
+         result="blur"
+         id="feGaussianBlur1" />
+      <feOffset
+         dx="2"
+         dy="4"
+         in="blur"
+         result="offsetBlur"
+         id="feOffset1" />
+      <feColorMatrix
+         in="offsetBlur"
+         type="matrix"
+         values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0   0 0 0 0.5 0"
+         result="shadowMatrix"
+         id="feColorMatrix1" />
+      <feMerge
+         id="feMerge2">
+        <feMergeNode
+           in="shadowMatrix"
+           id="feMergeNode1" />
+        <feMergeNode
+           in="SourceGraphic"
+           id="feMergeNode2" />
+      </feMerge>
+    </filter>
+    <linearGradient
+       id="belt-grad"
+       x1="20.788046"
+       y1="0"
+       x2="73.703072"
+       y2="0"
+       gradientTransform="matrix(1.0583005,0,0,0.94491118,0.09999633,-102.1)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#1c2024"
+         id="stop2" />
+      <stop
+         offset="50%"
+         stop-color="#2a3036"
+         id="stop3" />
+      <stop
+         offset="100%"
+         stop-color="#1c2024"
+         id="stop4" />
+    </linearGradient>
+    <!-- Градиент корпуса спавнера -->
+    <linearGradient
+       id="spawner-base"
+       x1="1.4674518"
+       y1="45.139476"
+       x2="1.4674518"
+       y2="125.36017"
+       gradientTransform="scale(1.2266162,0.81525094)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#37474F"
+         id="stop5" />
+      <stop
+         offset="100%"
+         stop-color="#1e293b"
+         id="stop6" />
+    </linearGradient>
+    <!-- Имитация глубокой шахты, из которой поднимаются детали -->
+    <linearGradient
+       id="deep-pit"
+       x1="14.328053"
+       y1="71.817155"
+       x2="14.328053"
+       y2="111.38987"
+       gradientTransform="matrix(1.4656562,0,0,0.68228824,0.09999633,-102.1)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#000000"
+         id="stop7" />
+      <stop
+         offset="100%"
+         stop-color="#111"
+         id="stop8" />
+    </linearGradient>
+  </defs>
+  <!-- БАЗОВАЯ СТАНИНА -->
+  <rect
+     x="5.099998"
+     y="-97.099998"
+     width="90"
+     height="90"
+     rx="4"
+     fill="#22272b"
+     stroke="#181c1f"
+     stroke-width="2"
+     id="rect8"
+     transform="rotate(90)" />
+  <!-- ВЫХОДЯЩИЙ КОНВЕЙЕР (Работает на вывод из устройства) -->
+  <rect
+     x="22.099998"
+     y="-102.1"
+     width="56"
+     height="50"
+     fill="url(#belt-grad)"
+     id="rect9"
+     style="fill:url(#belt-grad)"
+     transform="rotate(90)" />
+  <path
+     d="m 77.1,35.099997 15,15 -15,15"
+     fill="none"
+     stroke="#ffca28"
+     stroke-width="6"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path9" />
+  <path
+     d="m 37.1,35.099997 15,15 -15,15"
+     fill="none"
+     stroke="#ffca28"
+     stroke-width="6"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path10" />
+  <!-- МЕХАНИЗМ СПАВНЕРА (Нижняя половина клетки) -->
+  <rect
+     x="10"
+     y="45"
+     width="80"
+     height="45"
+     rx="6"
+     fill="url(#spawner-base)"
+     stroke="#111111"
+     stroke-width="2"
+     filter="url(#safe-shadow)"
+     id="rect10"
+     style="fill:url(#spawner-base)"
+     transform="rotate(90,51.000001,51.099998)" />
+  <!-- Шахта выдачи материалов -->
+  <rect
+     x="22.099998"
+     y="-52.100002"
+     width="56"
+     height="25"
+     rx="2"
+     fill="url(#deep-pit)"
+     stroke="#1c2024"
+     stroke-width="2"
+     id="rect11"
+     style="fill:url(#deep-pit)"
+     transform="rotate(90)" />
+  <!-- Защитные створки (Открытые) -->
+  <polygon
+     points="14,50 22,50 22,75 14,85 "
+     fill="#455a64"
+     stroke="#111111"
+     stroke-width="1"
+     id="polygon11"
+     transform="rotate(90,51.000001,51.099998)" />
+  <polygon
+     points="86,50 78,50 78,75 86,85 "
+     fill="#455a64"
+     stroke="#111111"
+     stroke-width="1"
+     id="polygon12"
+     transform="rotate(90,51.000001,51.099998)" />
+  <!-- Лазерная сканирующая сетка на выходе из шахты -->
+  <line
+     x1="44.100002"
+     y1="22.099998"
+     x2="44.100002"
+     y2="78.099998"
+     stroke="#4ade80"
+     stroke-width="1"
+     stroke-dasharray="2, 2"
+     opacity="0.6"
+     id="line12" />
+  <line
+     x1="36.100002"
+     y1="22.099998"
+     x2="36.100002"
+     y2="78.099998"
+     stroke="#4ade80"
+     stroke-width="1"
+     stroke-dasharray="2, 2"
+     opacity="0.6"
+     id="line13" />
+  <!-- ИНДИКАЦИЯ: Знак "Выход" (Emission / Spawning) -->
+  <!-- Зеленые светодиоды -->
+  <circle
+     cx="50.099998"
+     cy="-20.1"
+     r="5"
+     fill="#22c55e"
+     id="circle13"
+     transform="rotate(90)" />
+  <!-- Большая зеленая стрелка ИЗ аппарата -->
+  <path
+     d="m 18.1,45.099997 6,5 -6,5"
+     fill="none"
+     stroke="#111111"
+     stroke-width="2.5"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path13" />
+  <!-- Механические поршни-толкатели сзади -->
+  <rect
+     x="30.099998"
+     y="-17.1"
+     width="8"
+     height="5"
+     fill="#546e7a"
+     stroke="#111111"
+     stroke-width="1"
+     id="rect13"
+     transform="rotate(90)" />
+  <rect
+     x="62.099998"
+     y="-17.1"
+     width="8"
+     height="5"
+     fill="#546e7a"
+     stroke="#111111"
+     stroke-width="1"
+     id="rect14"
+     transform="rotate(90)" />
 </svg>

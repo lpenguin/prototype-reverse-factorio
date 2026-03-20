@@ -1,3 +1,194 @@
-<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <path d="M 20 20 L 80 50 L 20 80 Z" fill="orange"/>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 100 100"
+   width="128"
+   height="128"
+   version="1.1"
+   id="svg11"
+   sodipodi:docname="belt.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview11"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="3.0195313"
+     inkscape:cx="21.195343"
+     inkscape:cy="64.745149"
+     inkscape:window-width="1920"
+     inkscape:window-height="991"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg11" />
+  <defs
+     id="defs3">
+    <!-- Обрезаем стрелки по краям ленты -->
+    <clipPath
+       id="belt-clip-static">
+      <rect
+         x="20"
+         y="0"
+         width="60"
+         height="100"
+         id="rect1" />
+    </clipPath>
+    <!-- Градиент для эффекта объема резиновой ленты -->
+    <linearGradient
+       id="belt-gradient"
+       x1="29.398737"
+       y1="0"
+       x2="104.23188"
+       y2="0"
+       gradientTransform="matrix(0.74833148,0,0,1.3363062,0,-100)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#1c2024"
+         id="stop1" />
+      <stop
+         offset="50%"
+         stop-color="#2a3036"
+         id="stop2" />
+      <stop
+         offset="100%"
+         stop-color="#1c2024"
+         id="stop3" />
+    </linearGradient>
+  </defs>
+  <!-- Левый бортик (металл) -->
+  <rect
+     x="10"
+     y="-100"
+     width="12"
+     height="100"
+     fill="#546e7a"
+     rx="2"
+     id="rect3"
+     transform="rotate(90)" />
+  <line
+     x1="80"
+     y1="10"
+     x2="80"
+     y2="22"
+     stroke="#37474f"
+     stroke-width="2"
+     id="line3" />
+  <line
+     x1="50"
+     y1="10"
+     x2="50"
+     y2="22"
+     stroke="#37474f"
+     stroke-width="2"
+     id="line4" />
+  <line
+     x1="20"
+     y1="10"
+     x2="20"
+     y2="22"
+     stroke="#37474f"
+     stroke-width="2"
+     id="line5" />
+  <!-- Правый бортик (металл) -->
+  <rect
+     x="78"
+     y="-100"
+     width="12"
+     height="100"
+     fill="#546e7a"
+     rx="2"
+     id="rect5"
+     transform="rotate(90)" />
+  <line
+     x1="80"
+     y1="78"
+     x2="80"
+     y2="90"
+     stroke="#37474f"
+     stroke-width="2"
+     id="line6" />
+  <line
+     x1="50"
+     y1="78"
+     x2="50"
+     y2="90"
+     stroke="#37474f"
+     stroke-width="2"
+     id="line7" />
+  <line
+     x1="20"
+     y1="78"
+     x2="20"
+     y2="90"
+     stroke="#37474f"
+     stroke-width="2"
+     id="line8" />
+  <!-- Центральная лента -->
+  <rect
+     x="22"
+     y="-100"
+     width="56"
+     height="100"
+     fill="url(#belt-gradient)"
+     id="rect8"
+     style="fill:url(#belt-gradient)"
+     transform="rotate(90)" />
+  <!-- Желтые стрелки (статичные) -->
+  <g
+     clip-path="url(#belt-clip-static)"
+     id="g10"
+     transform="rotate(90,50,50)">
+    <path
+       d="M 35,25 50,10 65,25"
+       fill="none"
+       stroke="#ffca28"
+       stroke-width="6"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path8" />
+    <path
+       d="M 35,65 50,50 65,65"
+       fill="none"
+       stroke="#ffca28"
+       stroke-width="6"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path9" />
+    <path
+       d="M 35,105 50,90 65,105"
+       fill="none"
+       stroke="#ffca28"
+       stroke-width="6"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path10" />
+  </g>
+  <!-- Тень для глубины -->
+  <rect
+     x="22"
+     y="-100"
+     width="3"
+     height="100"
+     fill="#000000"
+     opacity="0.3"
+     id="rect10"
+     transform="rotate(90)" />
+  <rect
+     x="75"
+     y="-100"
+     width="3"
+     height="100"
+     fill="#000000"
+     opacity="0.1"
+     id="rect11"
+     transform="rotate(90)" />
 </svg>
