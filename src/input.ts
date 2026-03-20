@@ -1,17 +1,19 @@
 import type { ViewState, WorldState, Direction, Building, ItemInstance, Sorter, Receiver } from './types.ts';
 import { CELL_SIZE } from './types.ts';
-import { renderGridLines, updateTransform, renderWorld, updateRequestPopup, openSorterDialog, openReceiverDialog, renderRequestRepository } from './renderer.ts';
+import { updateTransform, updateRequestPopup, openSorterDialog, openReceiverDialog, renderRequestRepository } from './renderer.ts';
 import { placeBuilding, gridKey, removeItem } from './world.ts';
 import { buildingsRegistry as registry, requestRegistry } from './registry.ts';
 import { getHandler } from './simulation.ts';
+import type { WorldRenderer } from './world-renderer.ts';
 
 export function setupInput(
   svgElement: SVGSVGElement,
   worldGroup: SVGGElement,
-  gridGroup: SVGGElement,
+  _gridGroup: SVGGElement,
   viewState: ViewState,
   world: WorldState,
   dyingItems: Map<string, ItemInstance>,
+  worldRenderer: WorldRenderer,
 ): void {
   let isPanning = false;
   let isPainting = false;
@@ -20,8 +22,8 @@ export function setupInput(
 
   const updateDisplay = () => {
     updateTransform(worldGroup, viewState);
-    renderGridLines(gridGroup, viewState, svgElement.clientWidth, svgElement.clientHeight);
-    renderWorld(world, worldGroup, viewState);
+    worldRenderer.renderGridLines(viewState, svgElement.clientWidth, svgElement.clientHeight);
+    worldRenderer.syncAll(world, viewState, dyingItems);
   };
 
   const getGridCoords = (clientX: number, clientY: number) => {

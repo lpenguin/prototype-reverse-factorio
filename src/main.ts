@@ -1,11 +1,11 @@
 import { createWorld } from './world.ts';
 import type { ViewState, ItemInstance } from './types.ts';
-import { CELL_SIZE } from './types.ts';
 import { setupInput } from './input.ts';
 import { buildingsRegistry as registry } from './registry.ts';
-import { updateHUD, renderWorld } from './renderer.ts';
+import { updateHUD } from './renderer.ts';
 import { tickWorld } from './simulation.ts';
 import { GameTimer } from './timer.ts';
+import { WorldRenderer } from './world-renderer.ts';
 
 function init() {
   const world = createWorld();
@@ -29,7 +29,9 @@ function init() {
   // Items removed — kept alive for disappear animation
   const dyingItems = new Map<string, ItemInstance>();
 
-  setupInput(svg, worldGroup, gridGroup, viewState, world, dyingItems);
+  const worldRenderer = new WorldRenderer(worldGroup, gridGroup);
+
+  setupInput(svg, worldGroup, gridGroup, viewState, world, dyingItems, worldRenderer);
 
   // Initialize toolbar
   const toolbar = document.querySelector<HTMLDivElement>('#toolbar')!;
@@ -154,7 +156,7 @@ function init() {
       }
     }
 
-    renderWorld(world, worldGroup, viewState, dyingItems);
+    worldRenderer.syncAll(world, viewState, dyingItems);
   });
 
   timer.start();
