@@ -130,6 +130,139 @@
         font-size: 13px;
       }
       #sorter-clear-btn:hover { background: rgba(255, 80, 80, 0.3); }
+
+      /* Request Repository Panel */
+      #request-repository {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 250px;
+        height: 100%;
+        background: rgba(30, 30, 40, 0.9);
+        border-left: 1px solid #445;
+        color: #eee;
+        display: flex;
+        flex-direction: column;
+        z-index: 50;
+        box-shadow: -4px 0 15px rgba(0,0,0,0.3);
+      }
+      #request-repository-header {
+        padding: 15px;
+        background: rgba(50, 50, 70, 0.5);
+        border-bottom: 1px solid #445;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      #request-repository-header h2 {
+        margin: 0;
+        font-size: 16px;
+        color: #88ccff;
+      }
+      #new-request-btn {
+        background: #44aa44;
+        color: white;
+        border: none;
+        padding: 4px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: bold;
+      }
+      #new-request-btn:hover { background: #55bb55; }
+      #request-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .repo-request-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid #445;
+        border-radius: 6px;
+        padding: 10px;
+        font-size: 13px;
+        transition: background 0.2s, border-color 0.2s;
+        cursor: default;
+      }
+      .repo-request-card:hover { 
+        background: rgba(255, 255, 255, 0.08); 
+        border-color: #667;
+      }
+      .repo-request-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+        gap: 8px;
+      }
+      .repo-request-name { 
+        font-weight: bold; 
+        color: #88ff88; 
+        flex: 1;
+        font-size: 14px;
+        line-height: 1.2;
+      }
+      .repo-request-visuals {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        max-width: 80px;
+      }
+      .repo-swatch {
+        width: 14px;
+        height: 14px;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 2px;
+      }
+      .repo-shape {
+        width: 14px;
+        height: 14px;
+        background: #ccc;
+        position: relative;
+      }
+      .repo-shape-circle { border-radius: 50%; }
+      .repo-shape-triangle {
+        background: none;
+        width: 0;
+        height: 0;
+        border-left: 7px solid transparent;
+        border-right: 7px solid transparent;
+        border-bottom: 14px solid #ccc;
+      }
+      .repo-shape-square { border-radius: 0; }
+      .repo-shape-any {
+        background: none;
+        border: 1px dashed #666;
+        border-radius: 50%;
+      }
+      .repo-size {
+        width: 14px;
+        height: 14px;
+        border: 1px solid #aaa;
+        background: rgba(255,255,255,0.1);
+      }
+      .repo-request-reward { 
+        font-weight: bold; 
+        color: #ffcc44; 
+        font-size: 11px;
+        border-top: 1px solid rgba(255,255,255,0.05);
+        padding-top: 6px;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      /* Receiver Dialog (Selection) */
+      .receiver-dialog-item {
+        padding: 8px 12px;
+        border-bottom: 1px solid #334;
+        cursor: pointer;
+      }
+      .receiver-dialog-item:hover { background: rgba(255, 255, 255, 0.1); }
+      .receiver-dialog-item.selected { background: rgba(85, 136, 221, 0.2); border-left: 3px solid #5588dd; }
     </style>
   </head>
   <body>
@@ -139,6 +272,15 @@
     </svg>
     <div id="hud">Money: $0 | Tick: 0</div>
     <div id="request-popup"></div>
+    <div id="request-repository">
+      <div id="request-repository-header">
+        <h2>Requests</h2>
+        <button id="new-request-btn">NEW</button>
+      </div>
+      <div id="request-list">
+        <!-- Generated requests go here -->
+      </div>
+    </div>
     <div id="menu-container">
       <div id="pause-menu">
         <div class="tool" id="pause-btn">Pause</div>

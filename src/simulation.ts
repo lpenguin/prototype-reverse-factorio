@@ -28,9 +28,9 @@
  *   Round-robin state is updated, then world.items = nextItems.
  */
 
-import type { WorldState, Building, BuildingType, ItemInstance, Direction, Sorter, Belt } from './types.ts';
+import type { WorldState, Building, BuildingType, ItemInstance, Direction, Sorter, Belt, Receiver, Emitter } from './types.ts';
 import { MoveState } from './types.ts';
-import { itemRegistry, requestRegistry } from './registry.ts';
+import { itemRegistry } from './registry.ts';
 import { gridKey, getDirectionOffset } from './world.ts';
 
 // ---------------------------------------------------------------------------
@@ -390,13 +390,13 @@ function executeTickets(tickets: Ticket[], world: WorldState): void {
       const itemDefId = staticObj.itemPool[Math.floor(Math.random() * staticObj.itemPool.length)];
       const [ex, ey] = emitterKey.split(',').map(Number);
 
-      const targetBuilding = world.buildings.get(targetKey);
-      if (targetBuilding?.type === 'receiver') {
-        // Spawned directly into a receiver — score it; item visually travels emitter → receiver
-        scoreReceiver(world, targetBuilding as import('./types.ts').Receiver, {
-          defId: itemDefId, x: tx, y: ty, renderX: ex, renderY: ey, renderScale: 0,
-        });
-      } else {
+    const targetBuilding = world.buildings.get(targetKey) as Receiver | undefined;
+    if (targetBuilding?.type === 'receiver') {
+      // Spawned directly into a receiver — score it; item visually travels emitter → receiver
+      scoreReceiver(world, targetBuilding, {
+        defId: itemDefId, x: tx, y: ty, renderX: ex, renderY: ey, renderScale: 0,
+      });
+    } else {
         // Item appears at emitter cell (renderX/Y) and lerps to output cell (x/y)
         nextItems.set(targetKey, { defId: itemDefId, x: tx, y: ty, renderX: ex, renderY: ey, renderScale: 0 });
       }
@@ -405,14 +405,14 @@ function executeTickets(tickets: Ticket[], world: WorldState): void {
     }
 
     // Real item
-    const targetBuilding = world.buildings.get(targetKey);
+    const targetBuilding = world.buildings.get(targetKey) as Receiver | undefined;
     if (targetBuilding?.type === 'receiver') {
       // Move item logically to the receiver cell so the dying animation
       // lerps from the input cell into the receiver cell before fading out.
       ticket.item.x = tx;
       ticket.item.y = ty;
       // Consume the item — do NOT place in nextItems
-      scoreReceiver(world, targetBuilding as import('./types.ts').Receiver, ticket.item);
+      scoreReceiver(world, targetBuilding, ticket.item);
       updateLastAccepted(world, targetKey, ticket.sourceKey);
       continue;
     }
@@ -430,19 +430,27 @@ function executeTickets(tickets: Ticket[], world: WorldState): void {
 
 function scoreReceiver(
   world: WorldState,
-  receiver: import('./types.ts').Receiver,
+  receiver: Receiver,
   item: ItemInstance,
 ): void {
   const itemDef = itemRegistry.getItem(item.defId);
-  if (!itemDef || !receiver.requestId) return;
-  const request = requestRegistry.getRequest(receiver.requestId);
-  if (!request) return;
+  if (!itemDef) return;
+  const request = receiver.request;
 
   let matches = true;
   for (const [prop, condition] of Object.entries(request.properties)) {
-    if (!condition.includes(String(itemDef.properties[prop]))) { matches = false; break; }
+    const itemPropVal = String(itemDef.properties[prop] ?? '');
+    if (!condition.includes(itemPropVal)) { 
+      matches = false; 
+      break; 
+    }
   }
-  world.playerMoney += matches ? request.cost : -request.penalty;
+  
+  if (matches) {
+    world.playerMoney += request.cost;
+  } else {
+    world.playerMoney -= request.penalty;
+  }
 }
 
 function updateLastAccepted(world: WorldState, targetKey: string, sourceKey: string): void {
@@ -459,8 +467,8 @@ abstract class BuildingHandler<T extends Building> {
   abstract accept(world: WorldState, building: T, item: ItemInstance): boolean;
 }
 
-class ReceiverHandler extends BuildingHandler<import('./types.ts').Receiver> {
-  accept(world: WorldState, receiver: import('./types.ts').Receiver, item: ItemInstance): boolean {
+class ReceiverHandler extends BuildingHandler<Receiver> {
+  accept(world: WorldState, receiver: Receiver, item: ItemInstance): boolean {
     scoreReceiver(world, receiver, item);
     return true;
   }
@@ -488,7 +496,7 @@ class SorterHandler extends BuildingHandler<Sorter> {
 }
 
 const handlers = new Map<BuildingType, BuildingHandler<Building>>([
-  ['emitter',  new (class extends BuildingHandler<import('./types.ts').Emitter> {
+  ['emitter',  new (class extends BuildingHandler<Emitter> {
     accept() { return false; }
   })()],
   ['belt',     new BeltHandler()],

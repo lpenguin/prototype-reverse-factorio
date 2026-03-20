@@ -135,7 +135,8 @@ export interface Belt extends BaseBuilding {
 
 export interface Receiver extends BaseBuilding {
   type: 'receiver';
-  requestId?: string;
+  /** The specific request this receiver is currently trying to satisfy */
+  request: RequestDefinition;
   lastInputIndex?: number;
 }
 
@@ -168,6 +169,8 @@ export interface WorldState {
   buildings: Map<string, Building>; // Key format: "x,y"
   items: Map<string, ItemInstance>;   // Key format: "x,y"
   staticObjects: Map<string, StaticObject>; // Key format: "x,y"
+  /** Global repository of available requests */
+  requests: RequestDefinition[];
   playerMoney: number;
   tick: number;
   isPaused: boolean;

@@ -1,4 +1,4 @@
-import type { ViewState, WorldState, ItemInstance, Receiver, Sorter } from './types.ts';
+import type { ViewState, WorldState, ItemInstance, Receiver, Sorter, RequestDefinition } from './types.ts';
 import { buildingsRegistry as registry, itemRegistry, propertyRegistry, requestRegistry } from './registry.ts';
 import { gridKey } from './world.ts';
 
@@ -129,7 +129,7 @@ function renderPreview(worldGroup: SVGGElement, view: ViewState, world?: WorldSt
 }
 
 /**
- * Stub function to render buildings and items.
+ * Render buildings and items.
  */
 export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: ViewState, dyingItems?: Map<string, ItemInstance>): void {
   // Static objects layer
@@ -182,7 +182,6 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
   });
 
   // Buildings layer
-  // Clear buildings (except grid and preview for now, but we'll manage it better)
   let layer = worldGroup.querySelector('#buildings-layer') as SVGGElement;
   if (!layer) {
     layer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -212,11 +211,9 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
       g.appendChild(icon);
     }
 
-    // Sorter overlay: input/output port markers + active filter label
+    // Sorter overlay
     if (building.type === 'sorter') {
       const sorter = building as Sorter;
-
-      // Input port marker (behind = opposite of facing): small orange triangle pointing in
       const inPort = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
       inPort.setAttribute('points', `${centerX - 6},${y + 2} ${centerX + 6},${y + 2} ${centerX},${y + 10}`);
       inPort.setAttribute('fill', '#ff9900');
@@ -224,7 +221,6 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
       inPort.setAttribute('transform', `rotate(${rotation + 180}, ${centerX}, ${centerY})`);
       g.appendChild(inPort);
 
-      // Output port marker (front = facing direction): small green triangle pointing out
       const outPort = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
       outPort.setAttribute('points', `${centerX - 6},${y + 2} ${centerX + 6},${y + 2} ${centerX},${y + 10}`);
       outPort.setAttribute('fill', '#44ff88');
@@ -232,34 +228,35 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
       outPort.setAttribute('transform', `rotate(${rotation}, ${centerX}, ${centerY})`);
       g.appendChild(outPort);
 
-      // Filter label below the icon
-      if (sorter.filterProperty && sorter.filterValue) {
-        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        label.setAttribute('x', centerX.toString());
-        label.setAttribute('y', (y + 46).toString());
-        label.setAttribute('text-anchor', 'middle');
-        label.setAttribute('font-size', '9');
-        label.setAttribute('font-family', 'sans-serif');
-        label.setAttribute('fill', '#ffffff');
-        label.setAttribute('stroke', '#000');
-        label.setAttribute('stroke-width', '2');
-        label.setAttribute('paint-order', 'stroke');
-        label.textContent = `${sorter.filterProperty}:${sorter.filterValue}`;
-        g.appendChild(label);
-      } else {
-        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        label.setAttribute('x', centerX.toString());
-        label.setAttribute('y', (y + 46).toString());
-        label.setAttribute('text-anchor', 'middle');
-        label.setAttribute('font-size', '9');
-        label.setAttribute('font-family', 'sans-serif');
-        label.setAttribute('fill', '#ffcc44');
-        label.setAttribute('stroke', '#000');
-        label.setAttribute('stroke-width', '2');
-        label.setAttribute('paint-order', 'stroke');
-        label.textContent = 'any';
-        g.appendChild(label);
-      }
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.setAttribute('x', centerX.toString());
+      label.setAttribute('y', (y + 46).toString());
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('font-size', '9');
+      label.setAttribute('font-family', 'sans-serif');
+      label.setAttribute('fill', sorter.filterProperty ? '#ffffff' : '#ffcc44');
+      label.setAttribute('stroke', '#000');
+      label.setAttribute('stroke-width', '2');
+      label.setAttribute('paint-order', 'stroke');
+      label.textContent = sorter.filterProperty ? `${sorter.filterProperty}:${sorter.filterValue}` : 'any';
+      g.appendChild(label);
+    }
+
+    // Receiver overlay
+    if (building.type === 'receiver') {
+      const receiver = building as Receiver;
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.setAttribute('x', centerX.toString());
+      label.setAttribute('y', (y + 46).toString());
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('font-size', '9');
+      label.setAttribute('font-family', 'sans-serif');
+      label.setAttribute('fill', '#44ff44');
+      label.setAttribute('stroke', '#000');
+      label.setAttribute('stroke-width', '2');
+      label.setAttribute('paint-order', 'stroke');
+      label.textContent = receiver.request.name;
+      g.appendChild(label);
     }
 
     layer.appendChild(g);
@@ -301,7 +298,6 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
       element.setAttribute('points', points);
       element.setAttribute('fill', color);
     } else {
-      // Default to square
       element = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       element.setAttribute('x', (-size / 2).toString());
       element.setAttribute('y', (-size / 2).toString());
@@ -320,6 +316,76 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
   if (view) {
     renderPreview(worldGroup, view, world);
   }
+
+  // Update repository sidebar
+  renderRequestRepository(world);
+}
+
+/**
+ * Render the global request repository sidebar
+ */
+export function renderRequestRepository(world: WorldState): void {
+  const container = document.querySelector('#request-list');
+  if (!container) return;
+
+  // Simple optimization: only re-render if count changed (can be more robust)
+  if (container.children.length === world.requests.length + 1) return; // +1 for Any Item default
+
+  container.innerHTML = '';
+  
+  // Always show default request
+  const defaultReq = requestRegistry.getDefaultRequest();
+  container.appendChild(createRequestCard(defaultReq));
+
+  world.requests.forEach(req => {
+    container.appendChild(createRequestCard(req));
+  });
+}
+
+function createRequestCard(req: RequestDefinition): HTMLElement {
+  const card = document.createElement('div');
+  card.className = 'repo-request-card';
+  
+  let visualHtml = '<div class="repo-request-visuals">';
+  for (const [prop, values] of Object.entries(req.properties)) {
+    if (prop === 'color') {
+      values.forEach(v => {
+        const color = propertyRegistry.getValue('color', v);
+        visualHtml += `<div class="repo-swatch" style="background-color: ${color}" title="Color: ${v}"></div>`;
+      });
+    } else if (prop === 'shape') {
+      values.forEach(v => {
+        if (v === 'triangle') {
+          visualHtml += `<div class="repo-shape repo-shape-triangle" title="Shape: ${v}"></div>`;
+        } else if (v === 'circle') {
+          visualHtml += `<div class="repo-shape repo-shape-circle" title="Shape: ${v}"></div>`;
+        } else {
+          visualHtml += `<div class="repo-shape repo-shape-square" title="Shape: ${v}"></div>`;
+        }
+      });
+    } else if (prop === 'size') {
+      values.forEach(v => {
+        visualHtml += `<div class="repo-size" title="Size: ${v}"></div>`;
+      });
+    }
+  }
+  visualHtml += '</div>';
+
+  if (Object.keys(req.properties).length === 0) {
+    visualHtml = '<div class="repo-request-visuals"><div class="repo-shape repo-shape-any" title="Any Item"></div></div>';
+  }
+
+  card.innerHTML = `
+    <div class="repo-request-header">
+      <div class="repo-request-name">${req.name}</div>
+      ${visualHtml}
+    </div>
+    <div class="repo-request-reward">
+      <span>$${req.cost}</span>
+      <span style="color: #f66; font-size: 10px;">-$${req.penalty}</span>
+    </div>
+  `;
+  return card;
 }
 
 /**
@@ -331,20 +397,15 @@ export function updateHUD(world: WorldState): void {
 }
 
 /**
- * Open (or re-open) the sorter configuration dialog for the given sorter
- * building. The dialog is a floating panel over the SVG that lets the player
- * pick a property and value to filter on.
+ * Open the sorter configuration dialog
  */
 export function openSorterDialog(sorter: Sorter, onClose?: () => void): void {
-  // Remove any existing dialog
   document.querySelector('#sorter-dialog')?.remove();
 
   const allProperties = propertyRegistry.getAllProperties();
-
   const dialog = document.createElement('div');
   dialog.id = 'sorter-dialog';
 
-  // Build options HTML
   const propertyOptions = allProperties.map(p =>
     `<option value="${p.id}" ${sorter.filterProperty === p.id ? 'selected' : ''}>${p.name}</option>`
   ).join('');
@@ -362,60 +423,87 @@ export function openSorterDialog(sorter: Sorter, onClose?: () => void): void {
       <button id="sorter-dialog-close" aria-label="Close">&times;</button>
     </div>
     <div class="sorter-dialog-body">
-      <label>
-        Property
-        <select id="sorter-prop-select">${propertyOptions}</select>
-      </label>
-      <label>
-        Value
-        <select id="sorter-val-select">${valueOptions}</select>
-      </label>
+      <label>Property<select id="sorter-prop-select">${propertyOptions}</select></label>
+      <label>Value<select id="sorter-val-select">${valueOptions}</select></label>
       <button id="sorter-clear-btn">Clear filter (pass all)</button>
     </div>
   `;
 
   document.body.appendChild(dialog);
-
-  // Position near the center of the viewport
   dialog.style.left = `${window.innerWidth / 2 - 120}px`;
   dialog.style.top  = `${window.innerHeight / 2 - 80}px`;
 
   const propSelect = dialog.querySelector<HTMLSelectElement>('#sorter-prop-select')!;
   const valSelect  = dialog.querySelector<HTMLSelectElement>('#sorter-val-select')!;
 
-  const rebuildValueOptions = (propId: string, currentValue?: string) => {
-    const propDef = allProperties.find(p => p.id === propId);
-    if (!propDef) return;
-    valSelect.innerHTML = Object.keys(propDef.values).map(v =>
-      `<option value="${v}" ${v === currentValue ? 'selected' : ''}>${v}</option>`
-    ).join('');
-  };
-
   propSelect.addEventListener('change', () => {
     sorter.filterProperty = propSelect.value;
-    rebuildValueOptions(propSelect.value);
-    sorter.filterValue = valSelect.value;
+    const propDef = allProperties.find(p => p.id === propSelect.value);
+    if (propDef) {
+      valSelect.innerHTML = Object.keys(propDef.values).map(v => `<option value="${v}">${v}</option>`).join('');
+      sorter.filterValue = valSelect.value;
+    }
   });
 
   valSelect.addEventListener('change', () => {
     sorter.filterValue = valSelect.value;
   });
 
-  // Initialise state from current sorter settings
-  if (sorter.filterProperty) {
-    propSelect.value = sorter.filterProperty;
-    rebuildValueOptions(sorter.filterProperty, sorter.filterValue);
-  } else {
-    // Default to first property + first value
-    sorter.filterProperty = propSelect.value;
-    sorter.filterValue = valSelect.value;
-  }
-
   dialog.querySelector('#sorter-clear-btn')!.addEventListener('click', () => {
     sorter.filterProperty = undefined;
     sorter.filterValue = undefined;
     dialog.remove();
     onClose?.();
+  });
+
+  dialog.querySelector('#sorter-dialog-close')!.addEventListener('click', () => {
+    dialog.remove();
+    onClose?.();
+  });
+}
+
+/**
+ * Open the receiver request selection dialog
+ */
+export function openReceiverDialog(receiver: Receiver, world: WorldState, onClose?: () => void): void {
+  document.querySelector('#sorter-dialog')?.remove();
+
+  const dialog = document.createElement('div');
+  dialog.id = 'sorter-dialog'; // Reuse style
+
+  const allAvailable = [requestRegistry.getDefaultRequest(), ...world.requests];
+  
+  const itemsHtml = allAvailable.map(req => `
+    <div class="receiver-dialog-item ${receiver.request.id === req.id ? 'selected' : ''}" data-id="${req.id}">
+      <div style="font-weight:bold; color:#4f4">${req.name}</div>
+      <div style="font-size:11px; color:#aaa">$${req.cost} reward</div>
+    </div>
+  `).join('');
+
+  dialog.innerHTML = `
+    <div class="sorter-dialog-header">
+      <span>Select Request</span>
+      <button id="sorter-dialog-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="sorter-dialog-body" style="max-height: 300px; overflow-y: auto; padding:0;">
+      ${itemsHtml}
+    </div>
+  `;
+
+  document.body.appendChild(dialog);
+  dialog.style.left = `${window.innerWidth / 2 - 120}px`;
+  dialog.style.top  = `${window.innerHeight / 2 - 150}px`;
+
+  dialog.querySelectorAll('.receiver-dialog-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const id = item.getAttribute('data-id');
+      const req = allAvailable.find(r => r.id === id);
+      if (req) {
+        receiver.request = req;
+      }
+      dialog.remove();
+      onClose?.();
+    });
   });
 
   dialog.querySelector('#sorter-dialog-close')!.addEventListener('click', () => {
@@ -436,33 +524,34 @@ export function updateRequestPopup(world: WorldState, gridX: number, gridY: numb
 
   if (building?.type === 'receiver') {
     const receiver = building as Receiver;
-    if (receiver.requestId) {
-      const request = requestRegistry.getRequest(receiver.requestId);
-      if (request) {
-        let content = `<h3>${request.name}</h3>`;
-        
-        for (const [prop, condition] of Object.entries(request.properties)) {
-          let valStr: string;
-          if (prop === 'color') {
-            valStr = condition.map(c => {
-              const val = propertyRegistry.getValue('color', c);
-              return `<span class="color-swatch" style="background-color: ${val}"></span>${c}`;
-            }).join(', ');
-          } else {
-            valStr = condition.join(', ');
-          }
-          content += `<div class="prop"><span class="prop-label">${prop}:</span><span>${valStr}</span></div>`;
-        }
-        
-        content += `<div class="reward-info">Reward: $${request.cost} | Penalty: $${request.penalty}</div>`;
-        
-        popup.innerHTML = content;
-        popup.style.display = 'block';
-        popup.style.left = `${screenX + 20}px`;
-        popup.style.top = `${screenY + 20}px`;
-        return;
+    const request = receiver.request;
+    
+    let content = `<h3>${request.name}</h3>`;
+    
+    for (const [prop, condition] of Object.entries(request.properties)) {
+      let valStr: string;
+      if (prop === 'color') {
+        valStr = condition.map(c => {
+          const val = propertyRegistry.getValue('color', c);
+          return `<span class="color-swatch" style="background-color: ${val}"></span>${c}`;
+        }).join(', ');
+      } else {
+        valStr = condition.join(', ');
       }
+      content += `<div class="prop"><span class="prop-label">${prop}:</span><span>${valStr}</span></div>`;
     }
+    
+    if (Object.keys(request.properties).length === 0) {
+      content += `<div class="prop"><span class="prop-label">Condition:</span><span>Any item</span></div>`;
+    }
+    
+    content += `<div class="reward-info">Reward: $${request.cost} | Penalty: $${request.penalty}</div>`;
+    
+    popup.innerHTML = content;
+    popup.style.display = 'block';
+    popup.style.left = `${screenX + 20}px`;
+    popup.style.top = `${screenY + 20}px`;
+    return;
   }
 
   popup.style.display = 'none';

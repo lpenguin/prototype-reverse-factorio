@@ -96,7 +96,7 @@ class PropertyRegistry {
   }
 }
 
-class RequestRegistry {
+export class RequestRegistry {
   private requests: RequestDefinition[] = [];
   private requestMap: Map<string, RequestDefinition> = new Map();
   private nextRequestIndex: number = 0;
@@ -106,6 +106,51 @@ class RequestRegistry {
       this.requests.push(request);
       this.requestMap.set(request.id, request);
     }
+  }
+
+  /**
+   * Get the default request used for new receivers
+   */
+  getDefaultRequest(): RequestDefinition {
+    return {
+      id: 'default-request',
+      name: 'Any Item',
+      properties: {},
+      cost: 2,
+      penalty: 0
+    };
+  }
+
+  /**
+   * Generate a random request based on available properties
+   */
+  generateRandomRequest(): RequestDefinition {
+    const allProps = propertyRegistry.getAllProperties();
+    const numConstraints = Math.floor(Math.random() * 2) + 1; // 1 or 2 constraints
+    const shuffledProps = [...allProps].sort(() => Math.random() - 0.5);
+    const selectedProps = shuffledProps.slice(0, numConstraints);
+    
+    const properties: Record<string, string[]> = {};
+    const nameParts: string[] = [];
+
+    for (const prop of selectedProps) {
+      const values = Object.keys(prop.values);
+      const val = values[Math.floor(Math.random() * values.length)];
+      properties[prop.id] = [val];
+      nameParts.push(val.charAt(0).toUpperCase() + val.slice(1));
+    }
+
+    const id = `req-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const cost = 5 + (numConstraints * 5) + Math.floor(Math.random() * 5);
+    const penalty = Math.floor(cost / 2);
+
+    return {
+      id,
+      name: nameParts.join(' ') + ' Items',
+      properties,
+      cost,
+      penalty
+    };
   }
 
   getNextRequest(): RequestDefinition | undefined {

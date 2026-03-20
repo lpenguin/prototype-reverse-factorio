@@ -1,7 +1,7 @@
-import type { ViewState, WorldState, Direction, Building, ItemInstance, Sorter } from './types.ts';
-import { renderGridLines, updateTransform, renderWorld, updateRequestPopup, openSorterDialog } from './renderer.ts';
+import type { ViewState, WorldState, Direction, Building, ItemInstance, Sorter, Receiver } from './types.ts';
+import { renderGridLines, updateTransform, renderWorld, updateRequestPopup, openSorterDialog, openReceiverDialog, renderRequestRepository } from './renderer.ts';
 import { placeBuilding, gridKey, removeItem } from './world.ts';
-import { buildingsRegistry as registry } from './registry.ts';
+import { buildingsRegistry as registry, requestRegistry } from './registry.ts';
 import { getHandler } from './simulation.ts';
 
 export function setupInput(
@@ -108,10 +108,12 @@ export function setupInput(
       } else if (viewState.selectedBuildingId) {
         tryPlace(coords);
       } else {
-        // No tool selected — check if we clicked a sorter to open its dialog
+        // No tool selected — check if we clicked a sorter or receiver to open its dialog
         const clickedBuilding = world.buildings.get(gridKey(coords.x, coords.y));
         if (clickedBuilding?.type === 'sorter') {
           openSorterDialog(clickedBuilding as Sorter, () => updateDisplay());
+        } else if (clickedBuilding?.type === 'receiver') {
+          openReceiverDialog(clickedBuilding as Receiver, world, () => updateDisplay());
         } else {
           isPanning = true;
           lastX = e.clientX;
@@ -135,6 +137,16 @@ export function setupInput(
       }
     }
   });
+
+  // New Request button handling
+  const newRequestBtn = document.querySelector('#new-request-btn');
+  if (newRequestBtn) {
+    newRequestBtn.addEventListener('click', () => {
+      const newReq = requestRegistry.generateRandomRequest();
+      world.requests.push(newReq);
+      renderRequestRepository(world);
+    });
+  }
 
   svgElement.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -202,9 +214,6 @@ export function setupInput(
 
     if (oldZoom === newZoom) return;
 
-    // Zoom centered on cursor position:
-    // (mouseX - panX) / oldZoom = (mouseX - newPanX) / newZoom
-    // newPanX = mouseX - (mouseX - panX) * (newZoom / oldZoom)
     const rect = svgElement.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;

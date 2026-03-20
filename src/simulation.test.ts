@@ -1,7 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { Direction } from './types.ts';
+import { Direction, type Receiver } from './types.ts';
 import { createWorld, placeBuilding, addItem, gridKey } from './world.ts';
 import { tickWorld, sorterHandler } from './simulation.ts';
+import { requestRegistry } from './registry.ts';
+
+// Helper to create a receiver with a request
+function createTestReceiver(x: number, y: number, dir: Direction): Receiver {
+  return {
+    type: 'receiver',
+    x, y,
+    direction: dir,
+    request: requestRegistry.getDefaultRequest()
+  };
+}
 
 describe('Simulation Logic', () => {
   it('should move items across a belt chain in a single tick in sink-to-source order', () => {
@@ -12,7 +23,7 @@ describe('Simulation Logic', () => {
     placeBuilding(world, { type: 'belt', x: 2, y: 0, direction: Direction.E });
     placeBuilding(world, { type: 'belt', x: 3, y: 0, direction: Direction.E });
     // Receiver at (4, 0) fed by B3
-    placeBuilding(world, { type: 'receiver', x: 4, y: 0, direction: Direction.E });
+    placeBuilding(world, createTestReceiver(4, 0, Direction.E));
 
     // Item at B1 (1,0)
     addItem(world, { defId: 'iron', x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 0 });
@@ -44,7 +55,7 @@ describe('Simulation Logic', () => {
     placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.E });
     placeBuilding(world, { type: 'belt', x: 2, y: 0, direction: Direction.E });
     placeBuilding(world, { type: 'belt', x: 3, y: 0, direction: Direction.E });
-    placeBuilding(world, { type: 'receiver', x: 4, y: 0, direction: Direction.E });
+    placeBuilding(world, createTestReceiver(4, 0, Direction.E));
 
     addItem(world, { defId: 'item1', x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 0 });
     addItem(world, { defId: 'item2', x: 2, y: 0, renderX: 2, renderY: 0, renderScale: 0 });
@@ -72,7 +83,7 @@ describe('Simulation Logic', () => {
     placeBuilding(world, { type: 'belt', x: 0, y: 0, direction: Direction.E }); // B1 (index 0)
     placeBuilding(world, { type: 'belt', x: 1, y: 1, direction: Direction.N }); // B2 (index 1)
     placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.E }); // B3
-    placeBuilding(world, { type: 'receiver', x: 2, y: 0, direction: Direction.E });
+    placeBuilding(world, createTestReceiver(2, 0, Direction.E));
 
     // Tick 1: B1 has item, B2 is empty
     addItem(world, { defId: 'itemA1', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 0 });
@@ -219,6 +230,8 @@ describe('Sorter with downstream Receiver (regression)', () => {
   //
   // Direction.S: {dx:0, dy:+1} → output=(x, y+1), input=(x, y-1)
   // Sorter at (1,1) facing S: output=(1,2), input=(1,0)=B1. ✓
+  //
+  // Direction.S = 2 in our types.
 
   it('sorter receives matching items even when a receiver is at the end of the belt line', () => {
     const world = createWorld();
@@ -226,7 +239,7 @@ describe('Sorter with downstream Receiver (regression)', () => {
     placeBuilding(world, { type: 'belt',     x: 0, y: 0, direction: Direction.E });
     placeBuilding(world, { type: 'belt',     x: 1, y: 0, direction: Direction.E });
     placeBuilding(world, { type: 'belt',     x: 2, y: 0, direction: Direction.E });
-    placeBuilding(world, { type: 'receiver', x: 3, y: 0, direction: Direction.E });
+    placeBuilding(world, createTestReceiver(3, 0, Direction.E));
     // Sorter at (1,1) facing S: input=(1,0)=B1, output=(1,2)
     placeBuilding(world, { type: 'sorter',   x: 1, y: 1, direction: Direction.S,
       filterProperty: 'color', filterValue: 'red' });
@@ -250,7 +263,7 @@ describe('Sorter with downstream Receiver (regression)', () => {
     placeBuilding(world, { type: 'belt',     x: 0, y: 0, direction: Direction.E });
     placeBuilding(world, { type: 'belt',     x: 1, y: 0, direction: Direction.E });
     placeBuilding(world, { type: 'belt',     x: 2, y: 0, direction: Direction.E });
-    placeBuilding(world, { type: 'receiver', x: 3, y: 0, direction: Direction.E });
+    placeBuilding(world, createTestReceiver(3, 0, Direction.E));
     placeBuilding(world, { type: 'sorter',   x: 1, y: 1, direction: Direction.S,
       filterProperty: 'color', filterValue: 'red' });
 
@@ -277,7 +290,7 @@ describe('Sorter with downstream Receiver (regression)', () => {
     placeBuilding(world, { type: 'belt',     x: 1, y: 0, direction: Direction.E });
     placeBuilding(world, { type: 'belt',     x: 2, y: 0, direction: Direction.E });
     placeBuilding(world, { type: 'belt',     x: 3, y: 0, direction: Direction.E });
-    placeBuilding(world, { type: 'receiver', x: 4, y: 0, direction: Direction.E });
+    placeBuilding(world, createTestReceiver(4, 0, Direction.E));
     placeBuilding(world, { type: 'sorter',   x: 1, y: 1, direction: Direction.S,
       filterProperty: 'color', filterValue: 'red' });
 
@@ -298,4 +311,3 @@ describe('Sorter with downstream Receiver (regression)', () => {
     expect(world.items.has(gridKey(4, 0))).toBe(false);
   });
 });
-

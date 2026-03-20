@@ -1,4 +1,4 @@
-import type { WorldState, Building, ItemInstance, StaticObject } from './types.ts';
+import type { WorldState, Building, ItemInstance, StaticObject, Receiver } from './types.ts';
 import { Direction } from './types.ts';
 import { mapRegistry, buildingsRegistry, requestRegistry } from './registry.ts';
 
@@ -30,10 +30,16 @@ export function createWorld(): WorldState {
     buildings: new Map(),
     items: new Map(),
     staticObjects: new Map(),
+    requests: [], // Start with an empty repository
     playerMoney: 0,
     tick: 0,
     isPaused: false,
   };
+
+  // Add a few initial requests to get started
+  for (let i = 0; i < 3; i++) {
+    world.requests.push(requestRegistry.generateRandomRequest());
+  }
 
   generateGarbage(world);
 
@@ -46,7 +52,7 @@ export function createWorld(): WorldState {
 function generateGarbage(world: WorldState) {
   const { garbageRect, density, minSize, maxSize } = mapRegistry;
   const area = (garbageRect.x2 - garbageRect.x1) * (garbageRect.y2 - garbageRect.y1);
-  const averageSize = (minSize + maxSize) / 2;
+  const averageSize = ((minSize ?? 5) + (maxSize ?? 15)) / 2;
   const numPiles = Math.floor(area * density / averageSize);
 
   for (let i = 0; i < numPiles; i++) {
@@ -54,7 +60,7 @@ function generateGarbage(world: WorldState) {
     const startY = Math.floor(Math.random() * (garbageRect.y2 - garbageRect.y1)) + garbageRect.y1;
     
     // Grow a blob
-    const pileSize = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+    const pileSize = Math.floor(Math.random() * ((maxSize ?? 15) - (minSize ?? 5) + 1)) + (minSize ?? 5);
     const queue: Array<{x: number, y: number}> = [{x: startX, y: startY}];
     const visited = new Set<string>();
     
@@ -99,7 +105,7 @@ export function placeBuilding(world: WorldState, building: Building): boolean {
   }
 
   if (building.type === 'receiver') {
-    building.requestId = requestRegistry.getNextRequest()?.id;
+    (building as Receiver).request = requestRegistry.getDefaultRequest();
   }
 
   world.buildings.set(key, building);
