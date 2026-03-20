@@ -1,7 +1,7 @@
-import type { ViewState, WorldState, Direction, Building, ItemInstance, Sorter, Receiver } from './types.ts';
+import type { ViewState, WorldState, Direction, Building, ItemInstance, Sorter, Receiver, Scanner } from './types.ts';
 import { CELL_SIZE } from './types.ts';
-import { updateTransform, updateRequestPopup, openSorterDialog, openReceiverDialog, renderRequestRepository } from './renderer.ts';
-import { placeBuilding, gridKey, removeItem } from './world.ts';
+import { updateTransform, updateRequestPopup, openSorterDialog, openScannerDialog, openReceiverDialog, renderRequestRepository } from './renderer.ts';
+import { addWireCells, getOrthogonalDragCells, placeBuilding, gridKey, removeItem, removeBuilding } from './world.ts';
 import { buildingsRegistry as registry, requestRegistry } from './registry.ts';
 import { getHandler } from './simulation.ts';
 import type { WorldRenderer } from './world-renderer.ts';
@@ -17,6 +17,8 @@ export function setupInput(
 ): void {
   let isPanning = false;
   let isPainting = false;
+  let isWireDragging = false;
+  let wireStartCoords: { x: number; y: number } | null = null;
   let lastX = 0;
   let lastY = 0;
 
@@ -37,14 +39,14 @@ export function setupInput(
   };
 
   const tryErase = (coords: { x: number; y: number }) => {
-    const removed = world.buildings.delete(gridKey(coords.x, coords.y));
+    const removed = removeBuilding(world, coords.x, coords.y);
     if (removed) {
       updateDisplay();
     }
   };
 
   const tryPlace = (coords: { x: number; y: number }) => {
-    if (!viewState.selectedBuildingId || viewState.selectedBuildingId === 'erase') return;
+    if (!viewState.selectedBuildingId || viewState.selectedBuildingId === 'erase' || viewState.selectedBuildingId === 'wire') return;
     const def = registry.getBuilding(viewState.selectedBuildingId);
     if (!def) return;
 
@@ -65,7 +67,7 @@ export function setupInput(
           item.x = newBuilding.x;
           item.y = newBuilding.y;
           removeItem(world, newBuilding.x, newBuilding.y);
-          dyingItems.set(gridKey(newBuilding.x, newBuilding.y), item);
+          dyingItems.set(item.id, item);
         }
       }
       updateDisplay();
@@ -75,6 +77,7 @@ export function setupInput(
   const cancelSelection = () => {
     viewState.selectedBuildingId = null;
     viewState.previewCoords = null;
+    viewState.wirePreviewCells = [];
     document.querySelectorAll('.tool').forEach(t => t.classList.remove('selected'));
     updateDisplay();
   };
@@ -99,6 +102,9 @@ export function setupInput(
       }
 
       if (e.shiftKey && viewState.selectedBuildingId) {
+        if (viewState.selectedBuildingId === 'wire') {
+          return;
+        }
         isPainting = true;
         svgElement.setPointerCapture(e.pointerId);
         if (viewState.selectedBuildingId === 'erase') {
@@ -108,13 +114,23 @@ export function setupInput(
         }
       } else if (viewState.selectedBuildingId === 'erase') {
         tryErase(coords);
+      } else if (viewState.selectedBuildingId === 'wire') {
+        isWireDragging = true;
+        wireStartCoords = coords;
+        viewState.wirePreviewCells = [gridKey(coords.x, coords.y)];
+        svgElement.setPointerCapture(e.pointerId);
       } else if (viewState.selectedBuildingId) {
         tryPlace(coords);
       } else {
         // No tool selected — check if we clicked a sorter or receiver to open its dialog
         const clickedBuilding = world.buildings.get(gridKey(coords.x, coords.y));
-        if (clickedBuilding?.type === 'sorter') {
+        if (clickedBuilding?.type === 'button') {
+          clickedBuilding.isOn = !clickedBuilding.isOn;
+          updateDisplay();
+        } else if (clickedBuilding?.type === 'sorter') {
           openSorterDialog(clickedBuilding as Sorter, () => updateDisplay());
+        } else if (clickedBuilding?.type === 'scanner') {
+          openScannerDialog(clickedBuilding as Scanner, () => updateDisplay());
         } else if (clickedBuilding?.type === 'receiver') {
           openReceiverDialog(clickedBuilding as Receiver, world, () => updateDisplay());
         } else {
@@ -164,10 +180,13 @@ export function setupInput(
       }
     }
 
-    if (isPainting) {
+    if (isWireDragging && wireStartCoords) {
+      viewState.wirePreviewCells = getOrthogonalDragCells(wireStartCoords, coords);
+      updateDisplay();
+    } else if (isPainting) {
       if (viewState.selectedBuildingId === 'erase') {
         tryErase(coords);
-      } else {
+      } else if (viewState.selectedBuildingId !== 'wire') {
         tryPlace(coords);
       }
     } else if (isPanning) {
@@ -191,7 +210,18 @@ export function setupInput(
   });
 
   svgElement.addEventListener('pointerup', (e) => {
-    if (isPainting) {
+    if (isWireDragging) {
+      const coords = getGridCoords(e.clientX, e.clientY);
+      if (wireStartCoords) {
+        const cells = getOrthogonalDragCells(wireStartCoords, coords);
+        addWireCells(world, cells);
+      }
+      viewState.wirePreviewCells = [];
+      isWireDragging = false;
+      wireStartCoords = null;
+      updateDisplay();
+      svgElement.releasePointerCapture(e.pointerId);
+    } else if (isPainting) {
       isPainting = false;
       svgElement.releasePointerCapture(e.pointerId);
     } else if (isPanning) {
@@ -204,7 +234,7 @@ export function setupInput(
   svgElement.addEventListener('wheel', (e) => {
     e.preventDefault();
 
-    if (viewState.selectedBuildingId) {
+    if (viewState.selectedBuildingId && viewState.selectedBuildingId !== 'erase' && viewState.selectedBuildingId !== 'wire') {
       // Rotate building instead of zooming when a building is selected
       cycleDirection(e.deltaY > 0);
       return;

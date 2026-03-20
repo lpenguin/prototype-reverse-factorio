@@ -1,4 +1,4 @@
-import type { ViewState, WorldState, Receiver, Sorter, RequestDefinition } from './types.ts';
+import type { ViewState, WorldState, Receiver, Sorter, Scanner, RequestDefinition } from './types.ts';
 import { propertyRegistry, requestRegistry } from './registry.ts';
 import { gridKey } from './world.ts';
 
@@ -89,6 +89,21 @@ export function updateHUD(world: WorldState): void {
  * Open the sorter configuration dialog
  */
 export function openSorterDialog(sorter: Sorter, onClose?: () => void): void {
+  openFilterDialog('Sorter Filter', sorter, onClose);
+}
+
+/**
+ * Open the scanner configuration dialog
+ */
+export function openScannerDialog(scanner: Scanner, onClose?: () => void): void {
+  openFilterDialog('Scanner Predicate', scanner, onClose);
+}
+
+function openFilterDialog(
+  title: string,
+  target: { filterProperty?: string; filterValue?: string },
+  onClose?: () => void,
+): void {
   document.querySelector('#sorter-dialog')?.remove();
 
   const allProperties = propertyRegistry.getAllProperties();
@@ -96,19 +111,19 @@ export function openSorterDialog(sorter: Sorter, onClose?: () => void): void {
   dialog.id = 'sorter-dialog';
 
   const propertyOptions = allProperties.map(p =>
-    `<option value="${p.id}" ${sorter.filterProperty === p.id ? 'selected' : ''}>${p.name}</option>`
+    `<option value="${p.id}" ${target.filterProperty === p.id ? 'selected' : ''}>${p.name}</option>`
   ).join('');
 
-  const currentProp = allProperties.find(p => p.id === sorter.filterProperty) ?? allProperties[0];
+  const currentProp = allProperties.find(p => p.id === target.filterProperty) ?? allProperties[0];
   const valueOptions = currentProp
     ? Object.keys(currentProp.values).map(v =>
-        `<option value="${v}" ${sorter.filterValue === v ? 'selected' : ''}>${v}</option>`
+        `<option value="${v}" ${target.filterValue === v ? 'selected' : ''}>${v}</option>`
       ).join('')
     : '';
 
   dialog.innerHTML = `
     <div class="sorter-dialog-header">
-      <span>Sorter Filter</span>
+      <span>${title}</span>
       <button id="sorter-dialog-close" aria-label="Close">&times;</button>
     </div>
     <div class="sorter-dialog-body">
@@ -126,21 +141,21 @@ export function openSorterDialog(sorter: Sorter, onClose?: () => void): void {
   const valSelect  = dialog.querySelector<HTMLSelectElement>('#sorter-val-select')!;
 
   propSelect.addEventListener('change', () => {
-    sorter.filterProperty = propSelect.value;
+    target.filterProperty = propSelect.value;
     const propDef = allProperties.find(p => p.id === propSelect.value);
     if (propDef) {
       valSelect.innerHTML = Object.keys(propDef.values).map(v => `<option value="${v}">${v}</option>`).join('');
-      sorter.filterValue = valSelect.value;
+      target.filterValue = valSelect.value;
     }
   });
 
   valSelect.addEventListener('change', () => {
-    sorter.filterValue = valSelect.value;
+    target.filterValue = valSelect.value;
   });
 
   dialog.querySelector('#sorter-clear-btn')!.addEventListener('click', () => {
-    sorter.filterProperty = undefined;
-    sorter.filterValue = undefined;
+    target.filterProperty = undefined;
+    target.filterValue = undefined;
     dialog.remove();
     onClose?.();
   });

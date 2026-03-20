@@ -38,6 +38,46 @@
         { "type": "input",  "x": 0, "y": 0, "direction": "W" },
         { "type": "output", "x": 0, "y": 0, "direction": "E" }
       ]
+    },
+    {
+      "id": "scanner",
+      "name": "Scanner",
+      "type": "scanner",
+      "size": { "x": 1, "y": 1 },
+      "iconPath": "/icons/scanner.svg",
+      "wireConnectable": true,
+      "ports": [
+        { "type": "input",  "x": 0, "y": 0, "direction": "W" },
+        { "type": "output", "x": 0, "y": 0, "direction": "E" }
+      ]
+    },
+    {
+      "id": "arm",
+      "name": "Arm",
+      "type": "arm",
+      "size": { "x": 1, "y": 1 },
+      "wireConnectable": true,
+      "iconPath": "/icons/arm.svg",
+      "ports": [
+        { "type": "input",  "x": 0, "y": 0, "direction": "W" },
+        { "type": "output", "x": 0, "y": 0, "direction": "E" }
+      ]
+    },
+    {
+      "id": "button",
+      "name": "Button",
+      "type": "button",
+      "size": { "x": 1, "y": 1 },
+      "wireConnectable": true,
+      "iconPath": "/icons/button.svg"
+    },
+    {
+      "id": "lamp",
+      "name": "Lamp",
+      "type": "lamp",
+      "size": { "x": 1, "y": 1 },
+      "wireConnectable": true,
+      "iconPath": "/icons/lamp.svg"
     }
   ]
 }

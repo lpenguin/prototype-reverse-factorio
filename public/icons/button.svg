@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="128" height="128">
+  <defs>
+    <!-- Безопасная тень корпуса -->
+    <filter id="safe-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur" />
+      <feOffset dx="2" dy="4" in="blur" result="offsetBlur" />
+      <feColorMatrix in="offsetBlur" type="matrix" values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0   0 0 0 0.5 0" result="shadowMatrix" />
+      <feMerge>
+        <feMergeNode in="shadowMatrix" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Градиент объемной красной кнопки -->
+    <radialGradient id="button-red" cx="40%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#fca5a5" />  <!-- Светлый блик сверху слева -->
+      <stop offset="30%" stop-color="#ef4444" /> <!-- Основной красный -->
+      <stop offset="80%" stop-color="#b91c1c" /> <!-- Затенение к краям -->
+      <stop offset="100%" stop-color="#7f1d1d" /> <!-- Темный кант -->
+    </radialGradient>
+
+    <!-- Металлический градиент основания -->
+    <linearGradient id="metal-base" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#455A64" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+
+    <!-- Паттерн предупреждающих полос на корпусе -->
+    <pattern id="hazard-ring" width="10" height="10" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <rect width="10" height="5" fill="#111" />
+      <rect y="5" width="10" height="5" fill="#FBC02D" />
+    </pattern>
+
+    <!-- Стили для анимации нажатия -->
+    <style>
+      /* Основная группа с кнопкой */
+      .interactive-btn {
+        cursor: pointer;
+        transform-origin: 50px 50px;
+        transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      
+      /* Эффект при клике (кнопка продавливается) */
+      .interactive-btn:active .btn-cap {
+        transform: scale(0.92);
+        transform-origin: 50px 50px;
+        transition: transform 0.05s;
+      }
+      
+      /* Светодиодное кольцо загорается зеленым при нажатии */
+      .interactive-btn:active .status-ring {
+        stroke: #22c55e;
+        opacity: 1;
+      }
+    </style>
+  </defs>
+
+  <!-- ============================================== -->
+  <!-- НЕПОДВИЖНОЕ ОСНОВАНИЕ (Прикручено к полу) -->
+  <!-- ============================================== -->
+  <g filter="url(#safe-shadow)">
+    <!-- Восьмиугольный защитный кожух -->
+    <polygon points="50,18 73,27 82,50 73,73 50,82 27,73 18,50 27,27" fill="url(#metal-base)" stroke="#111" stroke-width="2" />
+    
+    <!-- Болты -->
+    <circle cx="50" cy="24" r="2" fill="#94a3b8" />
+    <circle cx="50" cy="76" r="2" fill="#94a3b8" />
+    <circle cx="24" cy="50" r="2" fill="#94a3b8" />
+    <circle cx="76" cy="50" r="2" fill="#94a3b8" />
+    <circle cx="32" cy="32" r="2" fill="#94a3b8" />
+    <circle cx="68" cy="68" r="2" fill="#94a3b8" />
+    <circle cx="68" cy="32" r="2" fill="#94a3b8" />
+    <circle cx="32" cy="68" r="2" fill="#94a3b8" />
+
+    <!-- Кольцо с желто-черными предупреждающими полосами -->
+    <circle cx="50" cy="50" r="22" fill="url(#hazard-ring)" stroke="#111" stroke-width="2" />
+    
+    <!-- Внутренняя металлическая шахта, в которой ходит кнопка -->
+    <circle cx="50" cy="50" r="18" fill="#0f172a" />
+    <!-- Тень внутри шахты (для глубины) -->
+    <circle cx="50" cy="50" r="18" fill="none" stroke="#000" stroke-width="2" opacity="0.8" />
+  </g>
+
+  <!-- ============================================== -->
+  <!-- ИНТЕРАКТИВНАЯ КНОПКА (Обернута в класс для CSS) -->
+  <!-- ============================================== -->
+  <g class="interactive-btn">
+    
+    <!-- Индикаторное кольцо вокруг кнопки (по умолчанию выключено/тёмное) -->
+    <circle class="status-ring" cx="50" cy="50" r="20" fill="none" stroke="#334155" stroke-width="2" opacity="0.6" style="transition: stroke 0.1s;" />
+
+    <!-- Группа самой нажимной шляпки -->
+    <g class="btn-cap">
+      <!-- Красный объемный купол кнопки -->
+      <circle cx="50" cy="50" r="16" fill="url(#button-red)" stroke="#450a0a" stroke-width="1.5" />
+      
+      <!-- Блик на стекле/пластике кнопки для еще большего объема -->
+      <path d="M 40 38 A 12 12 0 0 1 60 38 A 14 14 0 0 0 40 38 Z" fill="#ffffff" opacity="0.3" pointer-events="none" />
+      
+      <!-- Рифленые точки в центре (чтобы палец не скользил) -->
+      <circle cx="46" cy="46" r="0.8" fill="#7f1d1d" />
+      <circle cx="54" cy="46" r="0.8" fill="#7f1d1d" />
+      <circle cx="46" cy="54" r="0.8" fill="#7f1d1d" />
+      <circle cx="54" cy="54" r="0.8" fill="#7f1d1d" />
+      <circle cx="50" cy="50" r="0.8" fill="#7f1d1d" />
+    </g>
+    
+    <!-- Прозрачная зона поверх всей кнопки для удобного клика мышкой -->
+    <circle cx="50" cy="50" r="22" fill="transparent" />
+  </g>
+
+</svg>

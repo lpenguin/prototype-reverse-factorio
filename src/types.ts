@@ -93,6 +93,8 @@ export interface RequestsConfig {
  * An item instance on the grid
  */
 export interface ItemInstance {
+  /** Stable identity assigned by addItem(). Always set once the item is in the world. */
+  id: string;
   defId: string;
   x: number;
   y: number;
@@ -104,7 +106,7 @@ export interface ItemInstance {
 /**
  * Base building interface
  */
-export type BuildingType = 'emitter' | 'belt' | 'receiver' | 'sorter';
+export type BuildingType = 'emitter' | 'belt' | 'receiver' | 'sorter' | 'scanner' | 'arm' | 'button' | 'lamp';
 
 export interface BuildingDefinition {
   id: string;
@@ -113,6 +115,7 @@ export interface BuildingDefinition {
   size: { x: number; y: number };
   iconPath: string; // URL to the external SVG
   preferredStaticTypes?: string[];
+  wireConnectable?: boolean;
   itemPool?: string[];
   ports?: Array<{
     type: 'input' | 'output';
@@ -155,7 +158,26 @@ export interface Sorter extends BaseBuilding {
   lastInputIndex?: number;
 }
 
-export type Building = Emitter | Belt | Receiver | Sorter;
+export interface Scanner extends BaseBuilding {
+  type: 'scanner';
+  filterProperty?: string;
+  filterValue?: string;
+}
+
+export interface Arm extends BaseBuilding {
+  type: 'arm';
+}
+
+export interface Button extends BaseBuilding {
+  type: 'button';
+  isOn: boolean;
+}
+
+export interface Lamp extends BaseBuilding {
+  type: 'lamp';
+}
+
+export type Building = Emitter | Belt | Receiver | Sorter | Scanner | Arm | Button | Lamp;
 
 /**
  * Static objects on the map (e.g. garbage piles)
@@ -173,6 +195,8 @@ export interface StaticObject {
 export interface WorldState {
   buildings: Map<string, Building>; // Key format: "x,y"
   items: Map<string, ItemInstance>;   // Key format: "x,y"
+  wireCells: Set<string>; // Key format: "x,y"
+  signals: Map<string, boolean>; // Key format: building key
   staticObjects: Map<string, StaticObject>; // Key format: "x,y"
   /** Global repository of available requests */
   requests: RequestDefinition[];
@@ -191,4 +215,5 @@ export interface ViewState {
   selectedBuildingId: string | null;
   selectedDirection: Direction;
   previewCoords: { x: number; y: number } | null;
+  wirePreviewCells: string[];
 }

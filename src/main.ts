@@ -1,5 +1,6 @@
 import { createWorld } from './world.ts';
 import type { ViewState, ItemInstance } from './types.ts';
+import * as TWEEN from '@tweenjs/tween.js';
 import { setupInput } from './input.ts';
 import { buildingsRegistry as registry } from './registry.ts';
 import { updateHUD } from './renderer.ts';
@@ -16,6 +17,7 @@ function init() {
     selectedBuildingId: null,
     selectedDirection: 1, // Default to East
     previewCoords: null,
+    wirePreviewCells: [],
   };
 
   const svg = document.querySelector<SVGSVGElement>('#app')!;
@@ -113,6 +115,41 @@ function init() {
   });
   toolbar.appendChild(eraseTool);
 
+  // Add wire mode tool
+  const wireTool = document.createElement('div');
+  wireTool.className = 'tool';
+  wireTool.dataset.type = 'wire';
+  wireTool.style.display = 'flex';
+  wireTool.style.alignItems = 'center';
+
+  const wireIcon = document.createElement('img');
+  wireIcon.src = '/icons/wire.svg';
+  wireIcon.style.width = '24px';
+  wireIcon.style.height = '24px';
+  wireIcon.style.pointerEvents = 'none';
+
+  const wireLabel = document.createElement('span');
+  wireLabel.textContent = 'Wire';
+  wireLabel.style.marginLeft = '8px';
+  wireLabel.style.pointerEvents = 'none';
+
+  wireTool.appendChild(wireIcon);
+  wireTool.appendChild(wireLabel);
+
+  wireTool.addEventListener('click', () => {
+    const isSelected = wireTool.classList.contains('selected');
+    document.querySelectorAll('.tool').forEach(t => t.classList.remove('selected'));
+
+    if (isSelected) {
+      viewState.selectedBuildingId = null;
+    } else {
+      wireTool.classList.add('selected');
+      viewState.selectedBuildingId = 'wire';
+    }
+    console.log('Selected tool:', viewState.selectedBuildingId);
+  });
+  toolbar.appendChild(wireTool);
+
   const pauseBtn = document.querySelector<HTMLDivElement>('#pause-btn')!;
   pauseBtn.addEventListener('click', () => {
     world.isPaused = !world.isPaused;
@@ -129,22 +166,25 @@ function init() {
     const snapshot = new Map(world.items);
     tickWorld(world);
     updateHUD(world);
+
     const livingItems = new Set(world.items.values());
-    for (const [key, item] of snapshot) {
-      if (!livingItems.has(item) && !dyingItems.has(key)) {
-        dyingItems.set(key, item);
+    for (const [, item] of snapshot) {
+      if (!livingItems.has(item) && !dyingItems.has(item.id)) {
+        dyingItems.set(item.id, item);
       }
     }
   });
 
   timer.onFrame(tDelta => {
+    TWEEN.update(performance.now());
+
     world.items.forEach(item => {
       item.renderX += (item.x - item.renderX) * tDelta * LERP_SPEED;
       item.renderY += (item.y - item.renderY) * tDelta * LERP_SPEED;
       item.renderScale += (1 - item.renderScale) * tDelta * SCALE_SPEED;
     });
 
-    for (const [key, item] of dyingItems) {
+    for (const [id, item] of dyingItems) {
       const dx = item.x - item.renderX;
       const dy = item.y - item.renderY;
       item.renderX += dx * tDelta * LERP_SPEED;
@@ -152,7 +192,7 @@ function init() {
       // Only start scaling out once arrived at target
       if (Math.abs(dx) < 0.05 && Math.abs(dy) < 0.05) {
         item.renderScale += (0 - item.renderScale) * tDelta * SCALE_SPEED;
-        if (item.renderScale < 0.01) dyingItems.delete(key);
+        if (item.renderScale < 0.01) dyingItems.delete(id);
       }
     }
 

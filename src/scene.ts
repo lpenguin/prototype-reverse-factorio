@@ -1,5 +1,6 @@
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const XLINK_NS = 'http://www.w3.org/1999/xlink';
+let INLINE_SVG_COUNTER = 0;
 
 /**
  * Base class for all scene graph nodes.
@@ -188,6 +189,154 @@ export class SpriteNode extends SceneNode {
         this._image.setAttribute('transform', `rotate(${this._imgRotation},${this._imgPivotX},${this._imgPivotY})`);
       } else {
         this._image.removeAttribute('transform');
+      }
+    }
+  }
+}
+
+/**
+ * Renders an inline SVG document as part of the scene graph.
+ * IDs are namespaced to avoid collisions so internal parts can be controlled safely.
+ */
+export class InlineSvgNode extends SceneNode {
+  private _svgSource = '';
+  private _svgX = 0;
+  private _svgY = 0;
+  private _width = 0;
+  private _height = 0;
+  private _svgOpacity = 1;
+  private _svgDirty = true;
+  private _layoutDirty = true;
+  private _svgRoot: SVGSVGElement | null = null;
+  private readonly _idPrefix: string;
+  private readonly _idMap = new Map<string, string>();
+
+  constructor() {
+    super();
+    INLINE_SVG_COUNTER += 1;
+    this._idPrefix = `inline-svg-${INLINE_SVG_COUNTER}`;
+  }
+
+  get svgSource() { return this._svgSource; }
+  set svgSource(v: string) {
+    if (v !== this._svgSource) {
+      this._svgSource = v;
+      this._svgDirty = true;
+    }
+  }
+
+  get svgX() { return this._svgX; }
+  set svgX(v: number) { if (v !== this._svgX) { this._svgX = v; this._layoutDirty = true; } }
+
+  get svgY() { return this._svgY; }
+  set svgY(v: number) { if (v !== this._svgY) { this._svgY = v; this._layoutDirty = true; } }
+
+  get width() { return this._width; }
+  set width(v: number) { if (v !== this._width) { this._width = v; this._layoutDirty = true; } }
+
+  get height() { return this._height; }
+  set height(v: number) { if (v !== this._height) { this._height = v; this._layoutDirty = true; } }
+
+  get svgOpacity() { return this._svgOpacity; }
+  set svgOpacity(v: number) { if (v !== this._svgOpacity) { this._svgOpacity = v; this._layoutDirty = true; } }
+
+  getElementByOriginalId(id: string): SVGGraphicsElement | null {
+    if (this._svgDirty) {
+      this._rebuildSvg();
+    }
+    if (!this._svgRoot) return null;
+    const mappedId = this._idMap.get(id);
+    if (!mappedId) return null;
+    const escaped = this._escapeCssId(mappedId);
+    return this._svgRoot.querySelector(`#${escaped}`) as SVGGraphicsElement | null;
+  }
+
+  private _escapeCssId(id: string): string {
+    return id.replace(/([ !"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g, '\\$1');
+  }
+
+  private _rewriteSvgReferences(svgRoot: SVGSVGElement): void {
+    this._idMap.clear();
+
+    const withId = Array.from(svgRoot.querySelectorAll('[id]')) as SVGElement[];
+    for (const el of withId) {
+      const originalId = el.id;
+      if (!originalId) continue;
+      const mappedId = `${this._idPrefix}-${originalId}`;
+      this._idMap.set(originalId, mappedId);
+      el.id = mappedId;
+    }
+
+    const rewriteValue = (value: string): string => {
+      let next = value.replace(/url\(#([^)]+)\)/g, (_m, id: string) => {
+        const mapped = this._idMap.get(id);
+        return mapped ? `url(#${mapped})` : `url(#${id})`;
+      });
+
+      if (next.startsWith('#')) {
+        const rawId = next.slice(1);
+        const mapped = this._idMap.get(rawId);
+        if (mapped) {
+          next = `#${mapped}`;
+        }
+      }
+
+      return next;
+    };
+
+    const all = Array.from(svgRoot.querySelectorAll('*')) as SVGElement[];
+    for (const el of all) {
+      for (const attr of Array.from(el.attributes)) {
+        const rewritten = rewriteValue(attr.value);
+        if (rewritten !== attr.value) {
+          el.setAttribute(attr.name, rewritten);
+        }
+      }
+    }
+  }
+
+  private _rebuildSvg(): void {
+    this._svgDirty = false;
+    this._svgRoot?.remove();
+    this._svgRoot = null;
+
+    if (!this._svgSource.trim()) {
+      this._idMap.clear();
+      return;
+    }
+
+    const parser = new DOMParser();
+    const parsed = parser.parseFromString(this._svgSource, 'image/svg+xml');
+    const maybeSvg = parsed.documentElement;
+    if (!(maybeSvg instanceof SVGSVGElement)) {
+      this._idMap.clear();
+      return;
+    }
+
+    const svgRoot = document.importNode(maybeSvg, true) as SVGSVGElement;
+    this._rewriteSvgReferences(svgRoot);
+    this._svgRoot = svgRoot;
+    this.el.appendChild(svgRoot);
+    this._layoutDirty = true;
+  }
+
+  override syncDOM(): void {
+    super.syncDOM();
+
+    if (this._svgDirty) {
+      this._rebuildSvg();
+    }
+
+    if (this._layoutDirty && this._svgRoot) {
+      this._layoutDirty = false;
+      this._svgRoot.setAttribute('x', this._svgX.toString());
+      this._svgRoot.setAttribute('y', this._svgY.toString());
+      this._svgRoot.setAttribute('width', this._width.toString());
+      this._svgRoot.setAttribute('height', this._height.toString());
+      if (this._svgOpacity !== 1) {
+        this._svgRoot.setAttribute('opacity', this._svgOpacity.toString());
+      } else {
+        this._svgRoot.removeAttribute('opacity');
       }
     }
   }
