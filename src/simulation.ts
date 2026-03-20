@@ -28,10 +28,24 @@
  *   Round-robin state is updated, then world.items = nextItems.
  */
 
-import type { WorldState, Building, BuildingType, ItemInstance, Direction, Sorter, Belt, Receiver, Emitter } from './types.ts';
+import type {
+  WorldState,
+  Building,
+  BuildingType,
+  ItemInstance,
+  Direction,
+  Sorter,
+  Belt,
+  Receiver,
+  Emitter,
+  Scanner,
+  Arm,
+  Button,
+  Lamp,
+} from './types.ts';
 import { MoveState } from './types.ts';
 import { itemRegistry } from './registry.ts';
-import { gridKey, getDirectionOffset } from './world.ts';
+import { gridKey, getDirectionOffset, nextItemId } from './world.ts';
 
 // ---------------------------------------------------------------------------
 // Internal per-tick data structure
@@ -159,15 +173,12 @@ function generateIntents(world: WorldState): Ticket[] {
       };
       tickets.push(ticket);
       ticketBySourceKey.set(key, ticket);
+    } else if (building.type === 'arm') {
+      // Handled in Pass 2 alongside signal check.
     }
   }
 
-  // --- Pass 2: sorter intent injection ---
-  //
-  // For each sorter, check its input cell (the cell directly behind it).
-  // If there's a matching item there we need to give it a chance to enter
-  // the sorter — either by injecting the sorter cell into an existing belt
-  // ticket, or by creating a new "sorter-pull" ticket if no belt is present.
+  // --- Pass 2: sorter intent injection, then arm intent injection ---
 
   for (const [, building] of world.buildings) {
     if (building.type !== 'sorter') continue;
@@ -217,7 +228,61 @@ function generateIntents(world: WorldState): Ticket[] {
     }
   }
 
+  // --- Pass 2b: arm intent injection ---
+  //
+  // A powered arm grabs the item at its inputKey and jumps it directly to
+  // outputKey, bypassing normal belt flow. We either override an existing
+  // ticket for the input cell or create a new pull ticket.
+
+  for (const [armKey, building] of world.buildings) {
+    if (building.type !== 'arm') continue;
+    if (world.signals.get(armKey) !== true) continue; // must be powered
+
+    const arm = building as Arm;
+    const { dx, dy } = getDirectionOffset(arm.direction);
+    const inputKey  = gridKey(arm.x - dx, arm.y - dy);
+    const outputKey = gridKey(arm.x + dx, arm.y + dy);
+
+    const inputBuilding  = world.buildings.get(inputKey);
+    const outputBuilding = world.buildings.get(outputKey);
+    if (inputBuilding?.type !== 'belt')  continue;
+    if (outputBuilding?.type !== 'belt') continue;
+
+    const item = world.items.get(inputKey);
+    if (!item) continue;
+
+    // Compute the belt's own forward key so we can use it as a fallback intent.
+    // If the arm jump is blocked (output occupied), the item falls back to
+    // normal belt movement instead of freezing at the input cell.
+    const inputBelt = world.buildings.get(inputKey) as Belt;
+    const { dx: bdx, dy: bdy } = getDirectionOffset(inputBelt.direction);
+    const beltFwdKey = gridKey(inputBelt.x + bdx, inputBelt.y + bdy);
+
+    const existingTicket = ticketBySourceKey.get(inputKey);
+    if (existingTicket) {
+      // Jump to outputKey first; fall back to normal belt movement if blocked.
+      existingTicket.intents = [outputKey, beltFwdKey];
+      existingTicket.intentIndex = 0;
+    } else {
+      const armTicket: Ticket = {
+        id: inputKey,
+        item,
+        sourceKey: inputKey,
+        intents: [outputKey, beltFwdKey],
+        intentIndex: 0,
+        state: MoveState.UNRESOLVED,
+      };
+      tickets.push(armTicket);
+      ticketBySourceKey.set(inputKey, armTicket);
+    }
+  }
+
   return tickets;
+}
+
+function canHoldItems(building?: Building): boolean {
+  if (!building) return true;
+  return building.type === 'belt' || building.type === 'sorter' || building.type === 'receiver';
 }
 
 // ---------------------------------------------------------------------------
@@ -240,6 +305,11 @@ function checkCanMove(
 
   const targetKey = ticket.intents[ticket.intentIndex];
   const targetBuilding = world.buildings.get(targetKey);
+
+  if (!canHoldItems(targetBuilding)) {
+    states.set(ticket.id, MoveState.UNRESOLVED);
+    return false;
+  }
 
   if (targetBuilding?.type === 'receiver') {
     states.set(ticket.id, MoveState.UNRESOLVED);
@@ -380,6 +450,14 @@ function executeTickets(tickets: Ticket[], world: WorldState): void {
 
     const targetKey = ticket.intents[ticket.intentIndex];
     const [tx, ty] = targetKey.split(',').map(Number);
+    const targetBuilding = world.buildings.get(targetKey);
+
+    if (!canHoldItems(targetBuilding)) {
+      if (ticket.item) {
+        nextItems.set(ticket.sourceKey, ticket.item);
+      }
+      continue;
+    }
 
     // Virtual emitter: spawn a new item
     if (ticket.item === null) {
@@ -390,29 +468,29 @@ function executeTickets(tickets: Ticket[], world: WorldState): void {
       const itemDefId = staticObj.itemPool[Math.floor(Math.random() * staticObj.itemPool.length)];
       const [ex, ey] = emitterKey.split(',').map(Number);
 
-    const targetBuilding = world.buildings.get(targetKey) as Receiver | undefined;
-    if (targetBuilding?.type === 'receiver') {
+      const receiverTarget = targetBuilding as Receiver | undefined;
+      if (receiverTarget?.type === 'receiver') {
       // Spawned directly into a receiver — score it; item visually travels emitter → receiver
-      scoreReceiver(world, targetBuilding, {
-        defId: itemDefId, x: tx, y: ty, renderX: ex, renderY: ey, renderScale: 0,
+      scoreReceiver(world, receiverTarget, {
+        id: nextItemId(), defId: itemDefId, x: tx, y: ty, renderX: ex, renderY: ey, renderScale: 0,
       });
-    } else {
+      } else {
         // Item appears at emitter cell (renderX/Y) and lerps to output cell (x/y)
-        nextItems.set(targetKey, { defId: itemDefId, x: tx, y: ty, renderX: ex, renderY: ey, renderScale: 0 });
+        nextItems.set(targetKey, { id: nextItemId(), defId: itemDefId, x: tx, y: ty, renderX: ex, renderY: ey, renderScale: 0 });
       }
       updateLastAccepted(world, targetKey, emitterKey);
       continue;
     }
 
     // Real item
-    const targetBuilding = world.buildings.get(targetKey) as Receiver | undefined;
-    if (targetBuilding?.type === 'receiver') {
+    const receiverTarget = targetBuilding as Receiver | undefined;
+    if (receiverTarget?.type === 'receiver') {
       // Move item logically to the receiver cell so the dying animation
       // lerps from the input cell into the receiver cell before fading out.
       ticket.item.x = tx;
       ticket.item.y = ty;
       // Consume the item — do NOT place in nextItems
-      scoreReceiver(world, targetBuilding, ticket.item);
+      scoreReceiver(world, receiverTarget, ticket.item);
       updateLastAccepted(world, targetKey, ticket.sourceKey);
       continue;
     }
@@ -426,6 +504,66 @@ function executeTickets(tickets: Ticket[], world: WorldState): void {
 
   // Swap buffer
   world.items = nextItems;
+}
+
+function scannerSignalMatches(world: WorldState, scanner: Scanner): boolean {
+  const { dx, dy } = getDirectionOffset(scanner.direction);
+  const scanKey = gridKey(scanner.x + dx, scanner.y + dy);
+  const item = world.items.get(scanKey);
+  if (!item) return false;
+  return itemMatchesFilter(item, scanner.filterProperty, scanner.filterValue);
+}
+
+function propagateSignals(world: WorldState): void {
+  world.signals.clear();
+
+  const queue: string[] = [];
+  const energizedWireCells = new Set<string>();
+
+  for (const [, building] of world.buildings) {
+    if (building.type !== 'scanner') continue;
+    const scanner = building as Scanner;
+    if (!scannerSignalMatches(world, scanner)) continue;
+    const scannerKey = gridKey(scanner.x, scanner.y);
+    if (world.wireCells.has(scannerKey)) {
+      queue.push(scannerKey);
+    }
+  }
+
+  for (const [key, building] of world.buildings) {
+    if (building.type !== 'button') continue;
+    const button = building as Button;
+    if (!button.isOn) continue;
+    if (world.wireCells.has(key)) {
+      queue.push(key);
+    }
+  }
+
+  while (queue.length > 0) {
+    const key = queue.shift()!;
+    if (energizedWireCells.has(key) || !world.wireCells.has(key)) continue;
+    energizedWireCells.add(key);
+
+    const [x, y] = key.split(',').map(Number);
+    const neighbors = [
+      gridKey(x + 1, y),
+      gridKey(x - 1, y),
+      gridKey(x, y + 1),
+      gridKey(x, y - 1),
+    ];
+
+    for (const neighborKey of neighbors) {
+      if (world.wireCells.has(neighborKey) && !energizedWireCells.has(neighborKey)) {
+        queue.push(neighborKey);
+      }
+    }
+  }
+
+  for (const [buildingKey] of world.buildings) {
+    if (energizedWireCells.has(buildingKey)) {
+      world.signals.set(buildingKey, true);
+    }
+  }
 }
 
 function scoreReceiver(
@@ -502,6 +640,18 @@ const handlers = new Map<BuildingType, BuildingHandler<Building>>([
   ['belt',     new BeltHandler()],
   ['receiver', new ReceiverHandler()],
   ['sorter',   new SorterHandler()],
+  ['scanner',  new (class extends BuildingHandler<Scanner> {
+    accept() { return false; }
+  })()],
+  ['arm',      new (class extends BuildingHandler<Arm> {
+    accept() { return false; }
+  })()],
+  ['button',   new (class extends BuildingHandler<Button> {
+    accept() { return false; }
+  })()],
+  ['lamp',     new (class extends BuildingHandler<Lamp> {
+    accept() { return false; }
+  })()],
 ]);
 
 export function getHandler(type: BuildingType): BuildingHandler<Building> | undefined {
@@ -514,6 +664,7 @@ export function getHandler(type: BuildingType): BuildingHandler<Building> | unde
 
 export function tickWorld(world: WorldState): void {
   world.tick++;
+  propagateSignals(world);
   const tickets = generateIntents(world);
   resolveIntents(tickets, world);
   executeTickets(tickets, world);
