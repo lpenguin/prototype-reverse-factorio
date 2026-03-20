@@ -1,0 +1,437 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 100 200"
+   width="128"
+   height="256"
+   version="1.1"
+   id="svg24"
+   sodipodi:docname="splitter.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview24"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.5097656"
+     inkscape:cx="2.6494178"
+     inkscape:cy="46.033635"
+     inkscape:window-width="1920"
+     inkscape:window-height="991"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg24" />
+  <defs
+     id="defs8">
+    <!-- Тень от здания -->
+    <filter
+       id="splitter-shadow"
+       x="-0.0078947368"
+       y="-0.01875"
+       width="1.0157895"
+       height="1.0375">
+      <feDropShadow
+         dx="3"
+         dy="5"
+         stdDeviation="4"
+         flood-opacity="0.5" />
+    </filter>
+    <!-- Градиент базового конвейера -->
+    <linearGradient
+       id="belt-grad-split"
+       x1="0"
+       y1="0"
+       x2="1"
+       y2="0">
+      <stop
+         offset="0%"
+         stop-color="#1c2024"
+         id="stop1" />
+      <stop
+         offset="50%"
+         stop-color="#2a3036"
+         id="stop2" />
+      <stop
+         offset="100%"
+         stop-color="#1c2024"
+         id="stop3" />
+    </linearGradient>
+    <!-- Градиент стального корпуса разделения -->
+    <linearGradient
+       id="split-casing"
+       x1="2.2952418"
+       y1="12.961598"
+       x2="2.2952418"
+       y2="139.52779"
+       gradientTransform="scale(1.5248938,0.65578335)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#37474F"
+         id="stop4" />
+      <stop
+         offset="100%"
+         stop-color="#1c2024"
+         id="stop5" />
+    </linearGradient>
+    <!-- Градиент для металлических распределительных роликов -->
+    <linearGradient
+       id="roller-grad"
+       x1="0"
+       y1="0"
+       x2="0"
+       y2="1">
+      <stop
+         offset="0%"
+         stop-color="#2d3748"
+         id="stop6" />
+      <stop
+         offset="50%"
+         stop-color="#64748b"
+         id="stop7" />
+      <stop
+         offset="100%"
+         stop-color="#1e293b"
+         id="stop8" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#belt-grad-split"
+       id="linearGradient24"
+       x1="89.294853"
+       y1="95.638206"
+       x2="130.28265"
+       y2="95.638206"
+       gradientTransform="matrix(1.3662601,0,0,0.73192505,0.89446183,-99.988902)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#belt-grad-split"
+       id="linearGradient25"
+       x1="16.10235"
+       y1="0"
+       x2="57.090153"
+       y2="0"
+       gradientTransform="matrix(1.3662601,0,0,0.73192505,0.89446183,-99.988902)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#belt-grad-split"
+       id="linearGradient26"
+       x1="89.294853"
+       y1="0"
+       x2="130.28265"
+       y2="0"
+       gradientTransform="matrix(1.3662601,0,0,0.73192505,0.89446183,-99.988902)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#roller-grad"
+       id="linearGradient27"
+       x1="6.0724959"
+       y1="116.80741"
+       x2="6.0724959"
+       y2="154.74486"
+       gradientTransform="matrix(3.9934156,0,0,0.2504122,0.89446183,-99.988902)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#roller-grad"
+       id="linearGradient28"
+       x1="6.0724959"
+       y1="176.70863"
+       x2="6.0724959"
+       y2="214.64609"
+       gradientTransform="matrix(3.9934156,0,0,0.2504122,0.89446183,-99.988902)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#roller-grad"
+       id="linearGradient29"
+       x1="6.0724959"
+       y1="236.60988"
+       x2="6.0724959"
+       y2="274.54733"
+       gradientTransform="matrix(3.9934156,0,0,0.2504122,0.89446183,-99.988902)"
+       gradientUnits="userSpaceOnUse" />
+  </defs>
+  <!-- ВНЕШНИЕ КУСКИ КОНВЕЙЕРА -->
+  <!-- Правый ВХОД (Снизу). Только один вход активен -->
+  <rect
+     x="122.89447"
+     y="-29.988901"
+     width="56"
+     height="30"
+     fill="url(#belt-grad-split)"
+     id="rect8"
+     style="fill:url(#linearGradient24)"
+     transform="rotate(90)" />
+  <path
+     d="m 9.9889052,135.89446 14.9999998,15 -14.9999998,15"
+     fill="none"
+     stroke="#ffca28"
+     stroke-width="6"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path8" />
+  <!-- Левый ВЫХОД (Сверху) -->
+  <rect
+     x="22.894461"
+     y="-99.988907"
+     width="56"
+     height="30"
+     fill="url(#belt-grad-split)"
+     id="rect9"
+     style="fill:url(#linearGradient25)"
+     transform="rotate(90)" />
+  <path
+     d="m 74.988902,35.894462 15,14.999999 -15,15.000001"
+     fill="none"
+     stroke="#ffca28"
+     stroke-width="6"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path9" />
+  <!-- Правый ВЫХОД (Сверху) -->
+  <rect
+     x="122.89447"
+     y="-99.988907"
+     width="56"
+     height="30"
+     fill="url(#belt-grad-split)"
+     id="rect10"
+     style="fill:url(#linearGradient26)"
+     transform="rotate(90)" />
+  <path
+     d="m 74.988902,135.89446 15,15 -15,15"
+     fill="none"
+     stroke="#ffca28"
+     stroke-width="6"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path10" />
+  <!-- ГЛАВНЫЙ КОРПУС Сплиттера (2x1 клетки) -->
+  <!-- Массивная основа -->
+  <rect
+     x="5"
+     y="10"
+     width="190"
+     height="80"
+     rx="4"
+     fill="url(#split-casing)"
+     stroke="#111111"
+     stroke-width="3"
+     filter="url(#splitter-shadow)"
+     id="rect11"
+     style="fill:url(#split-casing)"
+     transform="rotate(90,49.547219,50.441683)" />
+  <!-- Заглушка левого входа (Показывает, что туда ничего не должно входить) -->
+  <rect
+     x="22.894461"
+     y="-29.988901"
+     width="56"
+     height="15"
+     fill="#1c2024"
+     id="rect12"
+     transform="rotate(90)" />
+  <line
+     x1="24.988901"
+     y1="22.894461"
+     x2="24.988901"
+     y2="78.894463"
+     stroke="#ef4444"
+     stroke-width="3"
+     stroke-dasharray="6, 4"
+     id="line12" />
+  <line
+     x1="19.988901"
+     y1="30.894461"
+     x2="19.988901"
+     y2="70.894463"
+     stroke="#ef4444"
+     stroke-width="2"
+     id="line13" />
+  <!-- ВНУТРЕННИЙ МЕХАНИЗМ (Открытый, без стекла) -->
+  <!-- Темная углубленная шахта механизма -->
+  <rect
+     x="15.894461"
+     y="-74.988907"
+     width="170"
+     height="50"
+     rx="3"
+     fill="#0f172a"
+     stroke="#111111"
+     stroke-width="2"
+     id="rect13"
+     transform="rotate(90)" />
+  <!-- ПОПЕРЕЧНЫЕ ТРАНСФЕРНЫЕ РОЛИКИ (Распределяют детали влево-вправо) -->
+  <!-- Верхний ролик -->
+  <rect
+     x="25.894461"
+     y="-69.988907"
+     width="150"
+     height="8"
+     rx="4"
+     fill="url(#roller-grad)"
+     stroke="#111111"
+     stroke-width="1.5"
+     id="rect14"
+     style="fill:url(#linearGradient27)"
+     transform="rotate(90)" />
+  <!-- Средний ролик -->
+  <rect
+     x="25.894461"
+     y="-54.988903"
+     width="150"
+     height="8"
+     rx="4"
+     fill="url(#roller-grad)"
+     stroke="#111111"
+     stroke-width="1.5"
+     id="rect15"
+     style="fill:url(#linearGradient28)"
+     transform="rotate(90)" />
+  <!-- Нижний ролик -->
+  <rect
+     x="25.894461"
+     y="-39.988903"
+     width="150"
+     height="8"
+     rx="4"
+     fill="url(#roller-grad)"
+     stroke="#111111"
+     stroke-width="1.5"
+     id="rect16"
+     style="fill:url(#linearGradient29)"
+     transform="rotate(90)" />
+  <!-- Блики на роликах, чтобы они казались круглыми вращающимися валами -->
+  <line
+     x1="67.988907"
+     y1="30.894461"
+     x2="67.988907"
+     y2="170.89447"
+     stroke="#cbd5e1"
+     stroke-width="1.5"
+     stroke-opacity="0.6"
+     stroke-linecap="round"
+     id="line16" />
+  <line
+     x1="52.988903"
+     y1="30.894461"
+     x2="52.988903"
+     y2="170.89447"
+     stroke="#cbd5e1"
+     stroke-width="1.5"
+     stroke-opacity="0.6"
+     stroke-linecap="round"
+     id="line17" />
+  <line
+     x1="37.988903"
+     y1="30.894461"
+     x2="37.988903"
+     y2="170.89447"
+     stroke="#cbd5e1"
+     stroke-width="1.5"
+     stroke-opacity="0.6"
+     stroke-linecap="round"
+     id="line18" />
+  <!-- ДВИЖУЩАЯСЯ ЦЕНТРАЛЬНАЯ КАРЕТКА / ДИВЕРТЕР (Распределитель) -->
+  <polygon
+     points="110,40 105,70 95,70 90,40 100,30 "
+     fill="#eab308"
+     stroke="#111111"
+     stroke-width="2"
+     id="polygon18"
+     transform="rotate(90,49.547219,50.441683)" />
+  <rect
+     x="95.894463"
+     y="-54.988903"
+     width="10"
+     height="15"
+     fill="#ca8a04"
+     id="rect18"
+     transform="rotate(90)" />
+  <!-- Ребро каретки -->
+  <!-- БОРТИКИ И НАВИГАЦИОННЫЕ МЕТКИ НА КОРПУСЕ -->
+  <!-- Металлическая рама сверху с четкими желтыми метками расхождения потока -->
+  <rect
+     x="15.894461"
+     y="-87.988907"
+     width="170"
+     height="10"
+     rx="2"
+     fill="#2d3748"
+     id="rect19"
+     transform="rotate(90)" />
+  <!-- Инфографика на корпусе: Стрелки Разделения  ( <- | -> ) -->
+  <path
+     d="m 82.988902,97.894462 h 4 l -4,-7 -4,7 z"
+     fill="#fbc02d"
+     id="path19" />
+  <rect
+     x="99.894463"
+     y="-85.988907"
+     width="2"
+     height="6"
+     fill="#fbc02d"
+     id="rect20"
+     transform="rotate(90)" />
+  <path
+     d="m 82.988902,103.89446 h 4 l -4,7 -4,-7 z"
+     fill="#fbc02d"
+     id="path20" />
+  <!-- ЛОГИЧЕСКИЙ ПОРТ (Слева, как на всех устройствах) -->
+  <!-- Коробка электроники (Управляет фильтрацией и приоритетом выходов) -->
+  <g
+     transform="translate(-2,35)"
+     id="g24"
+     style="display:none">
+    <rect
+       x="4"
+       y="0"
+       width="16"
+       height="30"
+       rx="3"
+       fill="#0f172a"
+       stroke="#1c2024"
+       stroke-width="2"
+       id="rect21" />
+    <!-- Индикация состояний выходов. Два синих диода - равномерное деление -->
+    <circle
+       cx="12"
+       cy="7"
+       r="2"
+       fill="#60a5fa"
+       id="circle21" />
+    <circle
+       cx="12"
+       cy="13"
+       r="2"
+       fill="#60a5fa"
+       id="circle22" />
+    <!-- Разъем для провода управления приоритетом -->
+    <circle
+       cx="12"
+       cy="24"
+       r="4.5"
+       fill="#111111"
+       stroke="#d97706"
+       stroke-width="1.5"
+       id="circle23" />
+    <circle
+       cx="12"
+       cy="24"
+       r="1.5"
+       fill="#d97706"
+       id="circle24" />
+  </g>
+</svg>

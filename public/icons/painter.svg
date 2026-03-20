@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="128" height="128">
+  <defs>
+    <!-- Тень от здания -->
+    <filter id="painter-shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="3" dy="5" stdDeviation="3" flood-opacity="0.4" />
+    </filter>
+
+    <!-- Градиент глухого промышленного корпуса -->
+    <linearGradient id="solid-casing" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#37474F" />
+      <stop offset="50%" stop-color="#263238" />
+      <stop offset="100%" stop-color="#1c2024" />
+    </linearGradient>
+
+    <!-- Градиент экрана (Рамка) -->
+    <linearGradient id="screen-frame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#111" />
+      <stop offset="100%" stop-color="#222" />
+    </linearGradient>
+  </defs>
+
+  <!-- БАЗОВАЯ СТАНИНА -->
+  <rect x="5" y="5" width="90" height="90" rx="6" fill="#22272b" stroke="#181c1f" stroke-width="2"/>
+  
+  <!-- Монтажные угловые крепления площадки -->
+  <path d="M 5 15 L 15 5 L 5 5 Z" fill="#455A64" />
+  <path d="M 95 15 L 85 5 L 95 5 Z" fill="#455A64" />
+  <path d="M 5 85 L 15 95 L 5 95 Z" fill="#455A64" />
+  <path d="M 95 85 L 85 95 L 95 95 Z" fill="#455A64" />
+
+
+  <!-- ГЛАВНЫЙ ЗАКРЫТЫЙ КОРПУС -->
+  <rect x="25" y="15" width="36" height="70" rx="4" fill="url(#solid-casing)" stroke="#111" stroke-width="2" filter="url(#painter-shadow)" />
+
+  <!-- Декоративные панели корпуса -->
+  <rect x="29" y="20" width="28" height="10" rx="2" fill="#1e293b" stroke="#111" stroke-width="1.5" />
+  <line x1="33" y1="25" x2="53" y2="25" stroke="#334155" stroke-width="2"/>
+  
+  <rect x="29" y="70" width="28" height="10" rx="2" fill="#1e293b" stroke="#111" stroke-width="1.5" />
+  <circle cx="43" cy="75" r="2.5" fill="#334155" />
+
+
+  <!-- ЭКРАН / ИНДИКАТОР ЦВЕТА (Единственный цветной элемент здания) -->
+  <!-- Черная рамка экрана -->
+  <rect x="30" y="38" width="26" height="24" rx="3" fill="url(#screen-frame)" stroke="#000" stroke-width="2" />
+  
+  <!-- ЦВЕТНОЙ КВАДРАТ (Изменяйте fill здесь!) -->
+  <rect x="35" y="42" width="16" height="16" rx="2" fill="#D946EF" />
+  
+  <!-- Блик на стекле экрана -->
+  <polygon points="35,42 47,42 35,54" fill="#ffffff" opacity="0.3" pointer-events="none" />
+
+
+  <!-- МЕХАНИЧЕСКИЙ РУКАВ И СОПЛО (Направлено жестко ВПРАВО) -->
+  
+  <!-- Толстый металлический поршень-основание -->
+  <rect x="61" y="42" width="12" height="16" fill="#455A64" stroke="#111" stroke-width="2" />
+  <!-- Гофрированная трубка (гармошка) соединяющая сопло с корпусом -->
+  <rect x="73" y="44" width="8" height="12" fill="#1e293b" stroke="#111" stroke-width="1.5" />
+  <line x1="75" y1="44" x2="75" y2="56" stroke="#000" stroke-width="1"/>
+  <line x1="79" y1="44" x2="79" y2="56" stroke="#000" stroke-width="1"/>
+
+  <!-- Головка сопла (сужается вправо) -->
+  <!-- Форма: трапеция, смотрящая наконечником к правому краю (x=96) -->
+  <polygon points="81,42 96,46 96,54 81,58" fill="#546E7A" stroke="#111" stroke-width="2" stroke-linejoin="round" />
+  <!-- Металлический наконечник (дюза) -->
+  <rect x="96" y="46" width="3" height="8" fill="#94A3B8" stroke="#111" stroke-width="1.5" />
+  <!-- Центральная темная дырка сопла -->
+  <rect x="98" y="48" width="1" height="4" fill="#000" />
+
+
+  <!-- ЛОГИЧЕСКИЙ ПОРТ УПРАВЛЕНИЯ (Слева) -->
+  <!-- Кабельный канал, врезанный в корпус станка -->
+  <rect x="18" y="46" width="7" height="8" fill="#1e293b" />
+  <line x1="18" y1="48" x2="25" y2="48" stroke="#111" stroke-width="1.5" />
+  <line x1="18" y1="52" x2="25" y2="52" stroke="#111" stroke-width="1.5" />
+
+  <!-- Коробка электроники (Точка вхождения сигнала) -->
+  <rect x="4" y="35" width="16" height="30" rx="3" fill="#0f172a" stroke="#1c2024" stroke-width="2"/>
+  
+  <!-- Индикатор режима -->
+  <circle cx="12" cy="42" r="3" fill="#22c55e" />
+  <circle cx="12" cy="42" r="1.5" fill="#86efac" />
+
+  <!-- Медное гнездо (ВХОД сигнала) -->
+  <circle cx="12" cy="55" r="5" fill="#111" stroke="#d97706" stroke-width="2"/>
+  <circle cx="12" cy="55" r="2" fill="#d97706" />
+
+</svg>

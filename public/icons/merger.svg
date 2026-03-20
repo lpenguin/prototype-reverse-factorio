@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 100 200"
+   width="128"
+   height="256"
+   version="1.1"
+   id="svg26"
+   sodipodi:docname="merger.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview26"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="6.0390625"
+     inkscape:cx="53.485123"
+     inkscape:cy="57.376455"
+     inkscape:window-width="1920"
+     inkscape:window-height="991"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg26" />
+  <defs
+     id="defs9">
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#hazard-guide"
+       id="pattern28"
+       patternTransform="rotate(135,49.699798,22.405072)" />
+    <!-- Тень от здания -->
+    <filter
+       id="drop-shadow-merger"
+       x="-0.0078947368"
+       y="-0.01875"
+       width="1.0157895"
+       height="1.0375">
+      <feDropShadow
+         dx="3"
+         dy="5"
+         stdDeviation="4"
+         flood-opacity="0.5" />
+    </filter>
+    <!-- Градиент резиновой ленты -->
+    <linearGradient
+       id="belt-gradient"
+       x1="0"
+       y1="0"
+       x2="1"
+       y2="0">
+      <stop
+         offset="0%"
+         stop-color="#1c2024"
+         id="stop1" />
+      <stop
+         offset="50%"
+         stop-color="#2a3036"
+         id="stop2" />
+      <stop
+         offset="100%"
+         stop-color="#1c2024"
+         id="stop3" />
+    </linearGradient>
+    <!-- Градиент бронированного корпуса -->
+    <linearGradient
+       id="casing-grad"
+       x1="2.2952418"
+       y1="12.961598"
+       x2="2.2952418"
+       y2="139.52779"
+       gradientTransform="scale(1.5248938,0.65578335)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#455A64"
+         id="stop4" />
+      <stop
+         offset="100%"
+         stop-color="#263238"
+         id="stop5" />
+    </linearGradient>
+    <!-- Защитное стекло -->
+    <linearGradient
+       id="glass"
+       x1="8.4054251"
+       y1="31.646231"
+       x2="111.67207"
+       y2="134.91289"
+       gradientTransform="matrix(1.6655911,0,0,0.60038747,3.1047865,-100.68564)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#E0F7FA"
+         stop-opacity="0.1"
+         id="stop6" />
+      <stop
+         offset="50%"
+         stop-color="#80DEEA"
+         stop-opacity="0.3"
+         id="stop7" />
+      <stop
+         offset="100%"
+         stop-color="#00BCD4"
+         stop-opacity="0.1"
+         id="stop8" />
+    </linearGradient>
+    <!-- Паттерн предупреждающих полос для направляющих -->
+    <pattern
+       id="hazard-guide"
+       width="10"
+       height="10"
+       patternTransform="rotate(45)"
+       patternUnits="userSpaceOnUse">
+      <rect
+         width="10"
+         height="5"
+         fill="#111"
+         id="rect8" />
+      <rect
+         y="5"
+         width="10"
+         height="5"
+         fill="#FBC02D"
+         id="rect9" />
+    </pattern>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#belt-gradient"
+       id="linearGradient26"
+       x1="16.10235"
+       y1="95.638206"
+       x2="57.090153"
+       y2="95.638206"
+       gradientTransform="matrix(1.3662601,0,0,0.73192505,3.1047865,-100.68564)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#belt-gradient"
+       id="linearGradient27"
+       x1="89.294853"
+       y1="95.638206"
+       x2="130.28265"
+       y2="95.638206"
+       gradientTransform="matrix(1.3662601,0,0,0.73192505,3.1047865,-100.68564)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#belt-gradient"
+       id="linearGradient28"
+       x1="89.294853"
+       y1="0"
+       x2="130.28265"
+       y2="0"
+       gradientTransform="matrix(1.3662601,0,0,0.73192505,3.1047865,-100.68564)"
+       gradientUnits="userSpaceOnUse" />
+  </defs>
+  <!-- ВИДИМЫЕ КУСКИ КОНВЕЙЕРА (Под зданием) -->
+  <!-- Левый ВХОД (Снизу) -->
+  <rect
+     x="25.104786"
+     y="-30.685637"
+     width="56"
+     height="30"
+     fill="url(#belt-gradient)"
+     id="rect10"
+     style="fill:url(#linearGradient26)"
+     transform="rotate(90)" />
+  <path
+     d="m 10.68564,38.104787 15,15 -15,15"
+     fill="none"
+     stroke="#ffca28"
+     stroke-width="6"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path10" />
+  <!-- Правый ВХОД (Снизу) -->
+  <rect
+     x="125.10479"
+     y="-30.685637"
+     width="56"
+     height="30"
+     fill="url(#belt-gradient)"
+     id="rect11"
+     style="fill:url(#linearGradient27)"
+     transform="rotate(90)" />
+  <path
+     d="m 10.68564,138.10479 15,15 -15,15"
+     fill="none"
+     stroke="#ffca28"
+     stroke-width="6"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path11" />
+  <!-- Правый ВЫХОД (Сверху) -->
+  <rect
+     x="125.10479"
+     y="-100.68564"
+     width="56"
+     height="30"
+     fill="url(#belt-gradient)"
+     id="rect12"
+     style="fill:url(#linearGradient28)"
+     transform="rotate(90)" />
+  <path
+     d="m 75.685637,138.10479 15,15 -15,15"
+     fill="none"
+     stroke="#ffca28"
+     stroke-width="6"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path12" />
+  <!-- ГЛАВНЫЙ БРОНИРОВАННЫЙ КОРПУС (Занимает 2x1 клетки) -->
+  <!-- Базовая плита -->
+  <rect
+     x="5"
+     y="10"
+     width="190"
+     height="80"
+     rx="6"
+     fill="url(#casing-grad)"
+     stroke="#111111"
+     stroke-width="3"
+     filter="url(#drop-shadow-merger)"
+     id="rect13"
+     style="fill:url(#casing-grad)"
+     transform="rotate(90,48.790427,51.895213)" />
+  <!-- Ограничитель левого выхода (заблокирован металлом) -->
+  <rect
+     x="25.104786"
+     y="-90.685638"
+     width="56"
+     height="10"
+     fill="#1c2024"
+     id="rect14"
+     transform="rotate(90)" />
+  <line
+     x1="80.685638"
+     y1="25.104786"
+     x2="80.685638"
+     y2="81.10479"
+     stroke="#fbc02d"
+     stroke-width="3"
+     stroke-dasharray="6, 4"
+     id="line14" />
+  <!-- Внутренняя камера (Под стеклом) -->
+  <!-- Пол камеры (Темный металл) -->
+  <rect
+     x="18.104786"
+     y="-80.685638"
+     width="170"
+     height="60"
+     rx="3"
+     fill="#1e293b"
+     id="rect15"
+     transform="rotate(90)" />
+  <!-- Внутренний гладкий пол-транспортер -->
+  <rect
+     x="25.104786"
+     y="-80.685638"
+     width="156"
+     height="60"
+     fill="#2d3748"
+     id="rect16"
+     transform="rotate(90)" />
+  <!-- НАПРАВЛЯЮЩИЕ БАМПЕРЫ (Смещают левый поток вправо) -->
+  <!-- Внешний диагональный бампер -->
+  <path
+     d="M 25.68564,25.104787 75.685637,125.10479 h 5 L 30.68564,25.104787 Z"
+     fill="url(#hazard-guide)"
+     stroke="#111111"
+     stroke-width="2"
+     id="path16"
+     style="fill:url(#pattern28)" />
+  <path
+     d="M 30.68564,25.104787 80.685637,125.10479"
+     stroke="#f8fafc"
+     stroke-width="1.5"
+     id="path17" />
+  <!-- Блик бампера -->
+  <!-- Маленький разделительный конус между правым и левым входом снизу -->
+  <polygon
+     points="100,80 90,60 110,60 "
+     fill="#455a64"
+     stroke="#111111"
+     stroke-width="2"
+     id="polygon17"
+     transform="rotate(90,48.790427,51.895213)" />
+  <!-- СТЕКЛЯННАЯ КРЫШКА И ОГРАЖДЕНИЯ -->
+  <!-- Толстое бронестекло сверху камеры (чтобы видеть процесс) -->
+  <rect
+     x="18.104786"
+     y="-80.685638"
+     width="170"
+     height="60"
+     rx="3"
+     fill="url(#glass)"
+     stroke="#546e7a"
+     stroke-width="2"
+     id="rect17"
+     style="fill:url(#glass)"
+     transform="rotate(90)" />
+  <!-- Блики на стекле -->
+  <line
+     x1="75.685638"
+     y1="28.104786"
+     x2="75.685638"
+     y2="53.104786"
+     stroke="#ffffff"
+     stroke-opacity="0.4"
+     stroke-width="2"
+     stroke-linecap="round"
+     id="line17" />
+  <line
+     x1="25.685637"
+     y1="163.10478"
+     x2="25.685637"
+     y2="183.10478"
+     stroke="#ffffff"
+     stroke-opacity="0.4"
+     stroke-width="3"
+     stroke-linecap="round"
+     id="line18" />
+  <!-- Металлические мостики / ребра жесткости поверх стекла -->
+  <rect
+     x="63.104786"
+     y="-90.685638"
+     width="15"
+     height="80"
+     fill="#37474f"
+     stroke="#111111"
+     stroke-width="2"
+     id="rect18"
+     transform="rotate(90)" />
+  <rect
+     x="128.10478"
+     y="-90.685638"
+     width="15"
+     height="80"
+     fill="#37474f"
+     stroke="#111111"
+     stroke-width="2"
+     id="rect19"
+     transform="rotate(90)" />
+  <!-- Клепки на мостиках -->
+  <circle
+     cx="70.60479"
+     cy="-85.685638"
+     r="2"
+     fill="#94a3b8"
+     id="circle19"
+     transform="rotate(90)" />
+  <circle
+     cx="70.60479"
+     cy="-15.68564"
+     r="2"
+     fill="#94a3b8"
+     id="circle20"
+     transform="rotate(90)" />
+  <circle
+     cx="135.60478"
+     cy="-85.685638"
+     r="2"
+     fill="#94a3b8"
+     id="circle21"
+     transform="rotate(90)" />
+  <circle
+     cx="135.60478"
+     cy="-15.68564"
+     r="2"
+     fill="#94a3b8"
+     id="circle22"
+     transform="rotate(90)" />
+  <!-- ЛОГИЧЕСКИЙ ПОРТ (Лево по центру, как на других устройствах) -->
+  <!-- Коробка электроники (Управление балансировкой потоков) -->
+  <g
+     transform="rotate(90,32.290427,33.395213)"
+     id="g26"
+     style="display:none">
+    <rect
+       x="4"
+       y="0"
+       width="16"
+       height="30"
+       rx="3"
+       fill="#0f172a"
+       stroke="#1c2024"
+       stroke-width="2"
+       id="rect22" />
+    <!-- Два индикатора для двух входных лент -->
+    <circle
+       cx="12"
+       cy="7"
+       r="2"
+       fill="#4ade80"
+       id="circle23" />
+    <!-- Лента 1 активна -->
+    <circle
+       cx="12"
+       cy="13"
+       r="2"
+       fill="#4ade80"
+       id="circle24" />
+    <!-- Лента 2 активна -->
+    <!-- Разъем для провода (медное контактное гнездо) -->
+    <circle
+       cx="12"
+       cy="23"
+       r="4.5"
+       fill="#111111"
+       stroke="#d97706"
+       stroke-width="1.5"
+       id="circle25" />
+    <circle
+       cx="12"
+       cy="23"
+       r="1.5"
+       fill="#d97706"
+       id="circle26" />
+  </g>
+</svg>

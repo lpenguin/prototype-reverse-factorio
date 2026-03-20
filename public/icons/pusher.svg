@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="128" height="128">
+  <defs>
+    <!-- Паттерн: предупреждающая окраска для толкающей пластины -->
+    <pattern id="hazard" width="10" height="10" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <rect width="10" height="5" fill="#1c2024" />
+      <rect y="5" width="10" height="5" fill="#FBC02D" />
+    </pattern>
+
+    <!-- Градиент для цилиндра мотора -->
+    <linearGradient id="motor-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#37474F" />
+      <stop offset="50%" stop-color="#546E7A" />
+      <stop offset="100%" stop-color="#263238" />
+    </linearGradient>
+
+    <!-- Паттерн ребристой поверхности мотора (радиатор) -->
+    <pattern id="heatsink" width="4" height="4" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="4" y2="0" stroke="#111" stroke-width="1.5" />
+    </pattern>
+  </defs>
+
+  <!-- БАЗОВАЯ СТАНИНА (Темная, бетонно-металлическая площадка 1х1) -->
+  <rect x="5" y="5" width="90" height="90" rx="6" fill="#22272b" stroke="#181c1f" stroke-width="2"/>
+  
+  <!-- Монтажные угловые крепления площадки (вместо мелких заклепок) -->
+  <path d="M 5 15 L 15 5 L 5 5 Z" fill="#455A64" />
+  <path d="M 95 15 L 85 5 L 95 5 Z" fill="#455A64" />
+  <path d="M 5 85 L 15 95 L 5 95 Z" fill="#455A64" />
+  <path d="M 95 85 L 85 95 L 95 95 Z" fill="#455A64" />
+
+  <!-- НАПРАВЛЯЮЩИЕ РЕЛЬСЫ (по которым выдвигается пластина) -->
+  <rect x="50" y="25" width="30" height="6" fill="#1A202C" />
+  <rect x="50" y="69" width="30" height="6" fill="#1A202C" />
+  <!-- Блеск на металле рельс -->
+  <line x1="50" y1="28" x2="80" y2="28" stroke="#718096" stroke-width="1.5" />
+  <line x1="50" y1="72" x2="80" y2="72" stroke="#718096" stroke-width="1.5" />
+
+
+  <!-- ГЛАВНЫЙ МЕХАНИЗМ (Левая часть) -->
+  
+  <!-- Базовый блок гидравлики -->
+  <rect x="25" y="15" width="30" height="70" rx="4" fill="#37474F" stroke="#111" stroke-width="2" />
+  
+  <!-- Большой цилиндрический электромотор по центру блока -->
+  <rect x="28" y="25" width="24" height="50" rx="12" fill="url(#motor-grad)" stroke="#111" stroke-width="2" />
+  <!-- Охлаждающие ребра мотора -->
+  <rect x="32" y="30" width="16" height="40" fill="url(#heatsink)" />
+  
+  <!-- Гидравлические шланги от мотора к поршню -->
+  <path d="M 50 40 Q 60 40 60 45" fill="none" stroke="#E28743" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 50 60 Q 60 60 60 55" fill="none" stroke="#E28743" stroke-width="2" stroke-linecap="round"/>
+
+
+  <!-- ПОРШЕНЬ И ПЛАСТИНА (Правая часть) -->
+  
+  <!-- Цилиндр поршня -->
+  <rect x="55" y="38" width="10" height="24" fill="#2d3748" stroke="#111" stroke-width="2" />
+  <!-- Выдвижной полированный металлический шток -->
+  <rect x="65" y="44" width="15" height="12" fill="#cbd5e1" stroke="#1e293b" stroke-width="1.5" />
+  <!-- Блик на штоке -->
+  <line x1="65" y1="48" x2="80" y2="48" stroke="#f8fafc" stroke-width="2" />
+
+  <!-- Толкающая пластина на рельсах (Рабочий бампер) -->
+  <path d="M 80 15 L 88 20 L 88 80 L 80 85 Z" fill="url(#hazard)" stroke="#111" stroke-width="2" stroke-linejoin="round"/>
+  
+
+  <!-- ЛОГИЧЕСКИЙ ПОРТ (Лево по центру) -->
+  
+  <!-- Кабельный канал, соединяющий порт и мотор -->
+  <rect x="18" y="45" width="10" height="10" fill="#1e293b" />
+  <line x1="18" y1="48" x2="25" y2="48" stroke="#111" stroke-width="1.5" />
+  <line x1="18" y1="52" x2="25" y2="52" stroke="#111" stroke-width="1.5" />
+
+  <!-- Коробка электроники (Точка подключения) -->
+  <rect x="4" y="35" width="16" height="30" rx="3" fill="#0f172a" stroke="#1c2024" stroke-width="2"/>
+  
+  <!-- Красный диод (Ждет сигнала) -->
+  <circle cx="12" cy="42" r="3" fill="#ef4444" />
+  <circle cx="12" cy="42" r="1.5" fill="#fca5a5" />
+
+  <!-- Медное гнездо для провода -->
+  <circle cx="12" cy="55" r="5" fill="#111" stroke="#d97706" stroke-width="2"/>
+  <circle cx="12" cy="55" r="2" fill="#d97706" />
+</svg>

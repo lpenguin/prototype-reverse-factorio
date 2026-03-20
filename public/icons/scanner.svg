@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="128" height="128">
+  <defs>
+    <!-- Градиент для линзы сканера (Кибер-оптика) -->
+    <radialGradient id="lens-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00E5FF" stop-opacity="1" />
+      <stop offset="40%" stop-color="#00B8D4" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#006064" stop-opacity="0.2" />
+    </radialGradient>
+
+    <!-- Градиент для луча сканирования (исчезает к краю клетки) -->
+    <linearGradient id="scan-beam" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#00E5FF" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Паттерн вентиляции вычислительного блока -->
+    <pattern id="server-vent" width="4" height="4" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="4" y2="0" stroke="#111" stroke-width="1.5" />
+    </pattern>
+  </defs>
+
+  <!-- БАЗОВАЯ СТАНИНА (Темная, бетонно-металлическая площадка 1х1) -->
+  <rect x="5" y="5" width="90" height="90" rx="6" fill="#22272b" stroke="#181c1f" stroke-width="2"/>
+  
+  <!-- Монтажные угловые крепления площадки (как у Толкателя) -->
+  <path d="M 5 15 L 15 5 L 5 5 Z" fill="#455A64" />
+  <path d="M 95 15 L 85 5 L 95 5 Z" fill="#455A64" />
+  <path d="M 5 85 L 15 95 L 5 95 Z" fill="#455A64" />
+  <path d="M 95 85 L 85 95 L 95 95 Z" fill="#455A64" />
+
+
+  <!-- ЦЕНТРАЛЬНЫЙ ВЫЧИСЛИТЕЛЬНЫЙ БЛОК (Собирает и анализирует данные) -->
+  <rect x="25" y="20" width="30" height="60" rx="3" fill="#37474F" stroke="#111" stroke-width="2" />
+  
+  <!-- Серверные стойки / Анализатор внутри блока -->
+  <rect x="29" y="24" width="22" height="52" fill="url(#server-vent)" />
+  <rect x="29" y="24" width="22" height="52" fill="#263238" opacity="0.6" /> <!-- Затемнение -->
+  
+  <!-- Лампочки индикации процесса анализа (мигают при чтении) -->
+  <circle cx="34" cy="30" r="1.5" fill="#00E5FF" />
+  <circle cx="34" cy="35" r="1.5" fill="#4ADE80" />
+  <circle cx="34" cy="40" r="1.5" fill="#4ADE80" />
+  
+  <!-- Телеметрические провода от процессора к сканеру -->
+  <path d="M 50 45 L 60 45" fill="none" stroke="#F59E0B" stroke-width="2" />
+  <path d="M 50 55 L 60 55" fill="none" stroke="#F59E0B" stroke-width="2" />
+
+
+  <!-- МЕХАНИЧЕСКАЯ РУКА И ОПТИЧЕСКИЙ СЕНСОР (Направлен вправо) -->
+  <!-- База руки -->
+  <polygon points="55,35 65,40 65,60 55,65" fill="#455A64" stroke="#111" stroke-width="2" />
+  <circle cx="60" cy="50" r="4" fill="#1c2024" /> <!-- Шарнир -->
+  
+  <!-- Держатель линзы (скобка) -->
+  <path d="M 65 35 L 75 35 L 75 65 L 65 65 L 65 60 L 70 60 L 70 40 L 65 40 Z" fill="#78909C" stroke="#111" stroke-width="1.5" />
+  
+  <!-- Сама оптическая линза / камера -->
+  <rect x="72" y="38" width="8" height="24" rx="4" fill="#0f172a" stroke="#111" stroke-width="2" />
+  <ellipse cx="78" cy="50" rx="4" ry="10" fill="url(#lens-glow)" />
+  <ellipse cx="77" cy="50" rx="1.5" ry="6" fill="#E0F7FA" opacity="0.8" /> <!-- Блик на стекле -->
+
+  <!-- ГОЛОГРАФИЧЕСКИЙ ЛУЧ СКАНИРОВАНИЯ (Направлен на конвейер) -->
+  <!-- Создает конус света, который накрывает проезжающие предметы -->
+  <polygon points="80,42 100,20 100,80 80,58" fill="url(#scan-beam)" />
+
+
+  <!-- ЛОГИЧЕСКИЙ ПОРТ ВЫВОДА (Слева посередине) -->
+  <!-- Шина данных, соединяющая процессор и порт -->
+  <rect x="18" y="45" width="7" height="10" fill="#1e293b" />
+  <line x1="18" y1="47" x2="25" y2="47" stroke="#00E5FF" stroke-width="1" />
+  <line x1="18" y1="50" x2="25" y2="50" stroke="#00E5FF" stroke-width="1" />
+  <line x1="18" y1="53" x2="25" y2="53" stroke="#00E5FF" stroke-width="1" />
+
+  <!-- Коробка электроники (Точка подключения провода) -->
+  <rect x="4" y="35" width="16" height="30" rx="3" fill="#0f172a" stroke="#1c2024" stroke-width="2"/>
+  
+  <!-- Индикатор выхода (Синий = считывание / Готовность передачи) -->
+  <circle cx="12" cy="42" r="3" fill="#00E5FF" />
+  <circle cx="12" cy="42" r="1.5" fill="#E0F7FA" />
+
+  <!-- Медное гнездо для вывода сигнала -->
+  <circle cx="12" cy="55" r="5" fill="#111" stroke="#d97706" stroke-width="2"/>
+  <!-- В отличие от входа Толкателя, здесь центральный пин имеет другую форму (квадрат), обозначающую ВЫХОД -->
+  <rect x="10.5" y="53.5" width="3" height="3" fill="#d97706" />
+</svg>

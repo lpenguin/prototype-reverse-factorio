@@ -1,0 +1,531 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 100 200"
+   width="128"
+   height="256"
+   version="1.1"
+   id="svg31"
+   sodipodi:docname="duplicator.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview31"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.5097656"
+     inkscape:cx="28.481242"
+     inkscape:cy="108.29495"
+     inkscape:window-width="1920"
+     inkscape:window-height="991"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg31" />
+  <defs
+     id="defs10">
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#sync-stripes"
+       id="pattern34"
+       patternTransform="rotate(45,121.52945,-48.650513)" />
+    <!-- Классическая, 100% совместимая с Inkscape тень (заменяет проблемный feDropShadow) -->
+    <filter
+       id="dupe-shadow"
+       x="-0.058421053"
+       y="-0.13875"
+       width="1.1326316"
+       height="1.34">
+      <!-- Размываем форму здания (создаем основу тени) -->
+      <feGaussianBlur
+         in="SourceAlpha"
+         stdDeviation="4"
+         result="blur"
+         id="feGaussianBlur1" />
+      <!-- Сдвигаем тень вправо и вниз -->
+      <feOffset
+         dx="3"
+         dy="5"
+         in="blur"
+         result="offsetBlur"
+         id="feOffset1" />
+      <!-- Делаем тень полупрозрачной (opacity 0.5) -->
+      <feColorMatrix
+         in="offsetBlur"
+         type="matrix"
+         values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0   0 0 0 0.5 0"
+         result="shadowMatrix"
+         id="feColorMatrix1" />
+      <!-- Сливаем тень и само здание вместе -->
+      <feMerge
+         id="feMerge2">
+        <feMergeNode
+           in="shadowMatrix"
+           id="feMergeNode1" />
+        <feMergeNode
+           in="SourceGraphic"
+           id="feMergeNode2" />
+      </feMerge>
+    </filter>
+    <!-- Градиент базового конвейера -->
+    <linearGradient
+       id="belt-grad"
+       x1="0"
+       y1="0"
+       x2="1"
+       y2="0">
+      <stop
+         offset="0%"
+         stop-color="#1c2024"
+         id="stop2" />
+      <stop
+         offset="50%"
+         stop-color="#2a3036"
+         id="stop3" />
+      <stop
+         offset="100%"
+         stop-color="#1c2024"
+         id="stop4" />
+    </linearGradient>
+    <!-- Темный хай-тек корпус -->
+    <linearGradient
+       id="dupe-base"
+       x1="-4.3053265"
+       y1="-1.5585347"
+       x2="-4.3053265"
+       y2="150.32774"
+       gradientTransform="scale(1.4168496,0.70579122)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#1e293b"
+         id="stop5" />
+      <stop
+         offset="100%"
+         stop-color="#0f172a"
+         id="stop6" />
+    </linearGradient>
+    <!-- Энергетическое свечение клонирующих колец (Неоновый Циан) -->
+    <radialGradient
+       id="holo-glow"
+       cx="0.5"
+       cy="0.5"
+       r="0.5">
+      <stop
+         offset="60%"
+         stop-color="#00F1FF"
+         stop-opacity="0.1"
+         id="stop7" />
+      <stop
+         offset="90%"
+         stop-color="#00F1FF"
+         stop-opacity="0.8"
+         id="stop8" />
+      <stop
+         offset="100%"
+         stop-color="#00F1FF"
+         stop-opacity="0"
+         id="stop9" />
+    </radialGradient>
+    <!-- Тот самый стильный паттерн диагональной синхронизирующей шины -->
+    <pattern
+       id="sync-stripes"
+       width="10"
+       height="10"
+       patternTransform="rotate(45)"
+       patternUnits="userSpaceOnUse">
+      <rect
+         width="10"
+         height="5"
+         fill="#334155"
+         id="rect9" />
+      <rect
+         y="5"
+         width="10"
+         height="5"
+         fill="#00E5FF"
+         id="rect10" />
+    </pattern>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#belt-grad"
+       id="linearGradient31"
+       x1="89.294853"
+       y1="95.638206"
+       x2="130.28265"
+       y2="95.638206"
+       gradientTransform="matrix(1.3662601,0,0,0.73192505,1.1940431,-100.18371)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#belt-grad"
+       id="linearGradient32"
+       x1="16.10235"
+       y1="0"
+       x2="57.090153"
+       y2="0"
+       gradientTransform="matrix(1.3662601,0,0,0.73192505,1.1940431,-100.18371)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#belt-grad"
+       id="linearGradient33"
+       x1="89.294853"
+       y1="0"
+       x2="130.28265"
+       y2="0"
+       gradientTransform="matrix(1.3662601,0,0,0.73192505,1.1940431,-100.18371)"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#holo-glow"
+       id="radialGradient33"
+       cx="50"
+       cy="30"
+       r="18"
+       fx="50"
+       fy="30"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(1.1940431,-100.18371)" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#holo-glow"
+       id="radialGradient34"
+       cx="150"
+       cy="30"
+       r="18"
+       fx="150"
+       fy="30"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(1.1940431,-100.18371)" />
+  </defs>
+  <!-- ВНЕШНИЕ КУСКИ КОНВЕЙЕРА (Основа) -->
+  <!-- Правый ВХОД (Оригинал заезжает снизу-справа) -->
+  <rect
+     x="123.19404"
+     y="-30.183708"
+     width="56"
+     height="30"
+     fill="url(#belt-grad)"
+     id="rect11"
+     style="fill:url(#linearGradient31)"
+     transform="rotate(90)" />
+  <path
+     d="m 10.183709,136.19404 15,15 -15,15"
+     fill="none"
+     stroke="#ffca28"
+     stroke-width="6"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path11" />
+  <!-- Левый ВЫХОД (Клон 1 уезжает вверх-влево) -->
+  <rect
+     x="23.194044"
+     y="-100.18372"
+     width="56"
+     height="30"
+     fill="url(#belt-grad)"
+     id="rect12"
+     style="fill:url(#linearGradient32)"
+     transform="rotate(90)" />
+  <path
+     d="m 75.18371,36.194043 15,15 -15,15"
+     fill="none"
+     stroke="#ffca28"
+     stroke-width="6"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path12" />
+  <!-- Правый ВЫХОД (Клон 2 уезжает вверх-вправо) -->
+  <rect
+     x="123.19404"
+     y="-100.18372"
+     width="56"
+     height="30"
+     fill="url(#belt-grad)"
+     id="rect13"
+     style="fill:url(#linearGradient33)"
+     transform="rotate(90)" />
+  <path
+     d="m 75.18371,136.19404 15,15 -15,15"
+     fill="none"
+     stroke="#ffca28"
+     stroke-width="6"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path13" />
+  <!-- ГЛАВНЫЙ КОРПУС ФАБРИКАТОРА-ДУБЛИКАТОРА -->
+  <rect
+     x="5"
+     y="10"
+     width="190"
+     height="80"
+     rx="4"
+     fill="url(#dupe-base)"
+     stroke="#111111"
+     stroke-width="3"
+     filter="url(#dupe-shadow)"
+     id="rect14"
+     style="fill:url(#dupe-base)"
+     transform="rotate(90,49.494835,50.688876)" />
+  <!-- Заглушка левого входа -->
+  <rect
+     x="23.194044"
+     y="-30.183708"
+     width="56"
+     height="15"
+     fill="#1c2024"
+     id="rect15"
+     transform="rotate(90)" />
+  <line
+     x1="25.183708"
+     y1="23.194044"
+     x2="25.183708"
+     y2="79.194046"
+     stroke="#ef4444"
+     stroke-width="3"
+     stroke-dasharray="6, 4"
+     id="line15" />
+  <line
+     x1="20.183708"
+     y1="31.194044"
+     x2="20.183708"
+     y2="71.194046"
+     stroke="#ef4444"
+     stroke-width="2"
+     id="line16" />
+  <!-- ВНУТРЕННЯЯ СИСТЕМА: СКАНИРОВАНИЕ И ПЕРЕДАЧА ЭНЕРГИИ -->
+  <!-- Кольцо сканера (Считывает фигуру на входе) -->
+  <path
+     d="m 35.183709,126.19404 a 15,25 0 0 1 0,50"
+     fill="none"
+     stroke="#334155"
+     stroke-width="6"
+     stroke-linecap="round"
+     id="path16" />
+  <path
+     d="m 35.183709,126.19404 a 15,25 0 0 1 0,50"
+     fill="none"
+     stroke="#00f1ff"
+     stroke-width="2"
+     stroke-linecap="round"
+     id="path17" />
+  <line
+     x1="35.183708"
+     y1="126.19404"
+     x2="35.183708"
+     y2="176.19405"
+     stroke="#00f1ff"
+     stroke-width="2"
+     stroke-dasharray="5, 5"
+     id="line17" />
+  <!-- Центральный Энергетический Узел -->
+  <rect
+     x="86.194038"
+     y="-60.183708"
+     width="30"
+     height="30"
+     rx="15"
+     fill="#0f172a"
+     stroke="#1e293b"
+     stroke-width="3"
+     id="rect17"
+     transform="rotate(90)" />
+  <circle
+     cx="101.19404"
+     cy="-45.183708"
+     r="8"
+     fill="#00f1ff"
+     id="circle17"
+     transform="rotate(90)" />
+  <circle
+     cx="101.19404"
+     cy="-45.183708"
+     r="4"
+     fill="#e0f7fa"
+     id="circle18"
+     transform="rotate(90)" />
+  <!-- Оптические магистрали передачи данных -->
+  <path
+     d="m 45.183709,131.19404 v -15"
+     fill="none"
+     stroke="#00f1ff"
+     stroke-width="3"
+     id="path18" />
+  <path
+     d="m 45.183709,86.194043 v -25 l 10.000001,-10"
+     fill="none"
+     stroke="#00f1ff"
+     stroke-width="3"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path19" />
+  <!-- ПАРАЛЛЕЛЬНЫЕ КАМЕРЫ МАТЕРИАЛИЗАЦИИ (Близнецы) -->
+  <!-- Левая голографическая платформа (КЛОН) -->
+  <circle
+     cx="51.194042"
+     cy="-70.183708"
+     r="22"
+     fill="#0f172a"
+     stroke="#334155"
+     stroke-width="2"
+     id="circle19"
+     transform="rotate(90)" />
+  <circle
+     cx="51.194042"
+     cy="-70.183708"
+     r="18"
+     fill="url(#holo-glow)"
+     id="circle20"
+     style="fill:url(#radialGradient33)"
+     transform="rotate(90)" />
+  <circle
+     cx="51.194042"
+     cy="-70.183708"
+     r="12"
+     fill="none"
+     stroke="#00f1ff"
+     stroke-width="1.5"
+     stroke-dasharray="4, 4"
+     id="circle21"
+     transform="rotate(90)" />
+  <!-- Правая голографическая платформа (ОРИГИНАЛ-КОПИЯ) -->
+  <circle
+     cx="151.19405"
+     cy="-70.183708"
+     r="22"
+     fill="#0f172a"
+     stroke="#334155"
+     stroke-width="2"
+     id="circle22"
+     transform="rotate(90)" />
+  <circle
+     cx="151.19405"
+     cy="-70.183708"
+     r="18"
+     fill="url(#holo-glow)"
+     id="circle23"
+     style="fill:url(#radialGradient34)"
+     transform="rotate(90)" />
+  <circle
+     cx="151.19405"
+     cy="-70.183708"
+     r="12"
+     fill="none"
+     stroke="#00f1ff"
+     stroke-width="1.5"
+     stroke-dasharray="4, 4"
+     id="circle24"
+     transform="rotate(90)" />
+  <!-- СИСТЕМА ЖЕСТКОЙ БЛОКИРОВКИ ("Оба выходят или никто") -->
+  <!-- Массивная синхронизирующая шина (соединяет выходы) -->
+  <rect
+     x="69.194046"
+     y="-76.183716"
+     width="64"
+     height="12"
+     rx="2"
+     fill="url(#sync-stripes)"
+     stroke="#111111"
+     stroke-width="2"
+     id="rect24"
+     style="fill:url(#pattern34)"
+     transform="rotate(90)" />
+  <!-- Замки на шине -->
+  <rect
+     x="66.194046"
+     y="-78.183716"
+     width="6"
+     height="16"
+     fill="#475569"
+     stroke="#111111"
+     stroke-width="2"
+     id="rect25"
+     transform="rotate(90)" />
+  <rect
+     x="130.19405"
+     y="-78.183716"
+     width="6"
+     height="16"
+     fill="#475569"
+     stroke="#111111"
+     stroke-width="2"
+     id="rect26"
+     transform="rotate(90)" />
+  <!-- ИНФОГРАФИКА НА КОРПУСЕ (Иконка Дублирования) -->
+  <g
+     transform="rotate(90,34.494833,50.688876)"
+     id="g28">
+    <rect
+       x="2"
+       y="2"
+       width="10"
+       height="10"
+       fill="none"
+       stroke="#94a3b8"
+       stroke-width="2"
+       id="rect27" />
+    <rect
+       x="6"
+       y="6"
+       width="10"
+       height="10"
+       fill="#0f172a"
+       stroke="#00f1ff"
+       stroke-width="2"
+       id="rect28" />
+  </g>
+  <!-- ЛОГИЧЕСКИЙ ПОРТ (Слева по центру) -->
+  <g
+     transform="rotate(90,32.994833,32.188876)"
+     id="g31">
+    <rect
+       x="4"
+       y="0"
+       width="16"
+       height="30"
+       rx="3"
+       fill="#0f172a"
+       stroke="#1c2024"
+       stroke-width="2"
+       id="rect29" />
+    <!-- Индикация "СВЯЗАННЫЙ ВЫХОД" (Linked Output) -->
+    <path
+       d="m 8,9 q 4,-4 8,0"
+       fill="none"
+       stroke="#00f1ff"
+       stroke-width="1.5"
+       stroke-linecap="round"
+       id="path29" />
+    <path
+       d="m 8,13 q 4,4 8,0"
+       fill="none"
+       stroke="#00f1ff"
+       stroke-width="1.5"
+       stroke-linecap="round"
+       id="path30" />
+    <!-- Разъем для провода -->
+    <circle
+       cx="12"
+       cy="24"
+       r="4.5"
+       fill="#111111"
+       stroke="#d97706"
+       stroke-width="1.5"
+       id="circle30" />
+    <circle
+       cx="12"
+       cy="24"
+       r="1.5"
+       fill="#d97706"
+       id="circle31" />
+  </g>
+</svg>

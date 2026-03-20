@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="128" height="128">
+  <defs>
+    <!-- Тень -->
+    <filter id="shadow-x" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="4" stdDeviation="3" flood-opacity="0.4" />
+    </filter>
+    
+    <!-- Шаблон одной ветви -->
+    <g id="cable-arm-4">
+      <rect x="0" y="-8" width="50" height="16" fill="#1e293b" stroke="#0f172a" stroke-width="2" />
+      <rect x="0" y="-2" width="50" height="4" fill="#d97706" />
+      <rect x="25" y="-12" width="12" height="24" rx="2" fill="#334155" stroke="#0f172a" stroke-width="2"/>
+      <!-- Импульсы бегут к центру, поэтому сдвинуты ближе -->
+      <rect x="15" y="-1" width="10" height="2" fill="#fbbf24" />
+    </g>
+  </defs>
+
+  <g filter="url(#shadow-x)">
+    <!-- 4 провода во все стороны от центра (50, 50) -->
+    <use href="#cable-arm-4" transform="translate(50, 50)" />         <!-- Вправо -->
+    <use href="#cable-arm-4" transform="translate(50, 50) rotate(90)" />  <!-- Вниз -->
+    <use href="#cable-arm-4" transform="translate(50, 50) rotate(180)" /> <!-- Влево -->
+    <use href="#cable-arm-4" transform="translate(50, 50) rotate(270)" /> <!-- Вверх -->
+
+    <!-- Усиленный массивный 4-х сторонний распределитель -->
+    <rect x="34" y="34" width="32" height="32" rx="6" fill="#1e293b" stroke="#0f172a" stroke-width="2"/>
+    <rect x="38" y="38" width="24" height="24" rx="3" fill="#334155" stroke="#0f172a" stroke-width="2"/>
+    
+    <!-- Монтажные болты на хабе -->
+    <circle cx="41" cy="41" r="1.5" fill="#94a3b8" />
+    <circle cx="59" cy="41" r="1.5" fill="#94a3b8" />
+    <circle cx="41" cy="59" r="1.5" fill="#94a3b8" />
+    <circle cx="59" cy="59" r="1.5" fill="#94a3b8" />
+
+    <!-- Центральный коммутационный узел (больше, чем у Т-образного) -->
+    <circle cx="50" cy="50" r="7" fill="#111" stroke="#d97706" stroke-width="2"/>
+    <circle cx="50" cy="50" r="3" fill="#fbbf24" />
+    
+    <!-- Медные микро-лучи на 4 стороны от центрального круглого узла -->
+    <path d="M 50 43 L 50 40 M 50 57 L 50 60 M 43 50 L 40 50 M 57 50 L 60 50" stroke="#d97706" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>

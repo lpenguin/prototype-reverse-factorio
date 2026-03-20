@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="128" height="128">
+  <defs>
+    <!-- Тень от здания -->
+    <filter id="trash-shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="3" dy="5" stdDeviation="3" flood-opacity="0.5" />
+    </filter>
+
+    <!-- Градиент базовой станины (Обожженный темный металл) -->
+    <linearGradient id="metal-base-burnt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#37474F" />
+      <stop offset="100%" stop-color="#111827" />
+    </linearGradient>
+
+    <!-- Градиент лавы / огня внутри топки -->
+    <radialGradient id="fire-core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="20%" stop-color="#FEF08A" /> <!-- Желтый жар -->
+      <stop offset="60%" stop-color="#F97316" /> <!-- Оранжевый огонь -->
+      <stop offset="100%" stop-color="#DC2626" /> <!-- Красная магма -->
+    </radialGradient>
+
+    <!-- Свечение из топки на края корпуса -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Паттерн предупреждающих полос на пандусе загрузки -->
+    <pattern id="hazard-ramp" width="10" height="10" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <rect width="10" height="5" fill="#1c2024" />
+      <rect y="5" width="10" height="5" fill="#DC2626" /> <!-- Красные полосы опасности -->
+    </pattern>
+  </defs>
+
+  <!-- БАЗОВАЯ СТАНИНА (Темная площадка 1х1, совместимая с другими устройствами) -->
+  <rect x="5" y="5" width="90" height="90" rx="6" fill="#1c2024" stroke="#111" stroke-width="2"/>
+  
+  <!-- Монтажные угловые крепления площадки -->
+  <path d="M 5 15 L 15 5 L 5 5 Z" fill="#37474F" />
+  <path d="M 95 15 L 85 5 L 95 5 Z" fill="#37474F" />
+  <path d="M 5 85 L 15 95 L 5 95 Z" fill="#37474F" />
+  <path d="M 95 85 L 85 95 L 95 95 Z" fill="#37474F" />
+
+
+  <!-- ВХОДНОЙ КОНВЕЙЕР (Обрывается на середине клетки) -->
+  <!-- Левый бортик -->
+  <rect x="35" y="65" width="6" height="35" fill="#546E7A" />
+  <!-- Правый бортик -->
+  <rect x="59" y="65" width="6" height="35" fill="#546E7A" />
+  <!-- Центральная лента до топки -->
+  <rect x="41" y="65" width="18" height="35" fill="#2a3036" />
+  <!-- Направляющая желтая стрелка "Ехать сюда" -->
+  <path d="M 43 85 L 50 78 L 57 85" fill="none" stroke="#FFCA28" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+
+  <!-- ПАНДУС СБРОСА (Окрашен в красно-черные полосы опасности) -->
+  <polygon points="35,65 65,65 59,55 41,55" fill="url(#hazard-ramp)" stroke="#111" stroke-width="2" />
+
+
+  <!-- ГЛАВНЫЙ КОРПУС ПЕЧИ (Массивная половина верхней части) -->
+  
+  <!-- Базовый купол обожженного металла -->
+  <rect x="15" y="15" width="70" height="55" rx="8" fill="url(#metal-base-burnt)" stroke="#000" stroke-width="3" filter="url(#trash-shadow)" />
+
+  <!-- Массивные болты на передней панели -->
+  <circle cx="25" cy="25" r="3" fill="#4B5563" />
+  <circle cx="75" cy="25" r="3" fill="#4B5563" />
+
+
+  <!-- ОТКРЫТАЯ ТОПКА (Сердце утилизатора) -->
+  <!-- Углубление-кратер (Черный контур камеры сгорания) -->
+  <rect x="30" y="30" width="40" height="30" rx="5" fill="#000" />
+  
+  <!-- Раскаленное ядро (Само свечение и пламя) -->
+  <rect x="32" y="32" width="36" height="26" rx="4" fill="url(#fire-core)" filter="url(#glow)" />
+  
+  <!-- РЕШЕТКА ГРИЛЯ ПОВЕРХ ПЛАМЕНИ (Чтобы не проваливаться персонажу) -->
+  <line x1="38" y1="30" x2="38" y2="60" stroke="#1c2024" stroke-width="4" />
+  <line x1="50" y1="30" x2="50" y2="60" stroke="#1c2024" stroke-width="4" />
+  <line x1="62" y1="30" x2="62" y2="60" stroke="#1c2024" stroke-width="4" />
+  
+  <line x1="30" y1="45" x2="70" y2="45" stroke="#1c2024" stroke-width="4" />
+  
+  <!-- Отражение жара на нижней кромке "рты" печи -->
+  <rect x="30" y="58" width="40" height="4" rx="2" fill="#F97316" opacity="0.6" />
+
+
+  <!-- ВЫТЯЖНАЯ ТРУБА (Дымоход: для визуализации переработки) -->
+  <!-- База трубы -->
+  <rect x="40" y="0" width="20" height="15" fill="#37474F" stroke="#111" stroke-width="2" />
+  <!-- Верхний обод трубы -->
+  <rect x="36" y="0" width="28" height="6" rx="1" fill="#455A64" stroke="#111" stroke-width="2" />
+  
+  <!-- Имитация дыма / пара (полупрозрачные эллипсы) -->
+  <ellipse cx="45" cy="0" rx="6" ry="4" fill="#64748B" opacity="0.4" />
+  <ellipse cx="58" cy="-5" rx="8" ry="5" fill="#475569" opacity="0.6" />
+  <ellipse cx="48" cy="-10" rx="7" ry="4" fill="#334155" opacity="0.5" />
+
+
+  <!-- ИНФОГРАФИКА: ЗНАК УТИЛИЗАЦИИ (Череп / Корзина / Огонь) -->
+  <!-- Знак пламени на левой стенке камеры -->
+  <g transform="translate(18, 40)">
+    <path d="M 5 10 Q 0 5 5 0 Q 3 5 8 5 Q 8 0 10 5 Q 15 5 10 10 Z" fill="#F97316" />
+  </g>
+  <g transform="translate(72, 40)">
+    <path d="M 5 10 Q 0 5 5 0 Q 3 5 8 5 Q 8 0 10 5 Q 15 5 10 10 Z" fill="#F97316" />
+  </g>
+
+
+  <!-- ПОРТ УПРАВЛЕНИЯ (Лево по центру, для опционального вкл/выкл по сети) -->
+  <g transform="translate(-2, 35)">
+    <rect x="4" y="0" width="16" height="30" rx="3" fill="#0f172a" stroke="#1c2024" stroke-width="2"/>
+    
+    <!-- Индикатор питания (Оранжевый / Красный = нагрет / активен) -->
+    <circle cx="12" cy="7" r="3" fill="#F97316" />
+    <circle cx="12" cy="7" r="1.5" fill="#FEF08A" />
+    
+    <!-- Разъем для провода (медное контактное гнездо) -->
+    <circle cx="12" cy="24" r="4.5" fill="#111" stroke="#d97706" stroke-width="1.5"/>
+    <circle cx="12" cy="24" r="1.5" fill="#d97706" />
+  </g>
+
+</svg>

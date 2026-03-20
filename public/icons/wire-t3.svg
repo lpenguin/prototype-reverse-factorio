@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="128" height="128">
+  <defs>
+    <!-- Тень под проводами -->
+    <filter id="shadow-t" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="4" stdDeviation="3" flood-opacity="0.4" />
+    </filter>
+    
+    <!-- Шаблон одной ветви провода (начинается строго от 0,0) -->
+    <g id="cable-arm-3">
+      <!-- Резиновый короб -->
+      <rect x="0" y="-8" width="50" height="16" fill="#1e293b" stroke="#0f172a" stroke-width="2" />
+      <!-- Медный сердечник -->
+      <rect x="0" y="-2" width="50" height="4" fill="#d97706" />
+      <!-- Желтый импульс сигнала -->
+      <rect x="20" y="-1" width="15" height="2" fill="#fbbf24" />
+      <!-- Скоба крепления к полу -->
+      <rect x="25" y="-12" width="12" height="24" rx="2" fill="#334155" stroke="#0f172a" stroke-width="2"/>
+    </g>
+  </defs>
+
+  <g filter="url(#shadow-t)">
+    <!-- Размножаем провода от центра экрана (50, 50) с нужным поворотом -->
+    <use href="#cable-arm-3" transform="translate(50, 50)" />         <!-- Вправо -->
+    <use href="#cable-arm-3" transform="translate(50, 50) rotate(90)" />  <!-- Вниз -->
+    <use href="#cable-arm-3" transform="translate(50, 50) rotate(180)" /> <!-- Влево -->
+
+    <!-- Центральный коммутационный блок T-перекрестка -->
+    <rect x="36" y="36" width="28" height="28" rx="4" fill="#1e293b" stroke="#0f172a" stroke-width="2"/>
+    <rect x="40" y="40" width="20" height="20" rx="2" fill="#334155" stroke="#0f172a" stroke-width="2"/>
+    
+    <!-- Распределительная точка в центре -->
+    <circle cx="50" cy="50" r="5" fill="#111" stroke="#d97706" stroke-width="2"/>
+    <circle cx="50" cy="50" r="2" fill="#fbbf24" />
+  </g>
+</svg>
