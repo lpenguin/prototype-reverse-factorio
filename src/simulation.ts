@@ -240,8 +240,8 @@ function generateIntents(world: WorldState): Ticket[] {
 
     const arm = building as Arm;
     const { dx, dy } = getDirectionOffset(arm.direction);
-    const inputKey  = gridKey(arm.x - dx, arm.y - dy);
-    const outputKey = gridKey(arm.x + dx, arm.y + dy);
+    const inputKey  = gridKey(arm.x + dx, arm.y + dy);   // cell IN FRONT of the arm (claw side)
+    const outputKey = gridKey(arm.x - dx, arm.y - dy);   // cell BEHIND the arm
 
     const inputBuilding  = world.buildings.get(inputKey);
     const outputBuilding = world.buildings.get(outputKey);

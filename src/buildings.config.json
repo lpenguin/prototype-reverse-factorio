@@ -59,8 +59,8 @@
       "wireConnectable": true,
       "iconPath": "/icons/arm.svg",
       "ports": [
-        { "type": "input",  "x": 0, "y": 0, "direction": "W" },
-        { "type": "output", "x": 0, "y": 0, "direction": "E" }
+        { "type": "input",  "x": 0, "y": 0, "direction": "E" },
+        { "type": "output", "x": 0, "y": 0, "direction": "W" }
       ]
     },
     {
