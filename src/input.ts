@@ -1,4 +1,5 @@
 import type { ViewState, WorldState, Direction, Building, ItemInstance, Sorter, Receiver } from './types.ts';
+import { CELL_SIZE } from './types.ts';
 import { renderGridLines, updateTransform, renderWorld, updateRequestPopup, openSorterDialog, openReceiverDialog, renderRequestRepository } from './renderer.ts';
 import { placeBuilding, gridKey, removeItem } from './world.ts';
 import { buildingsRegistry as registry, requestRegistry } from './registry.ts';
@@ -28,8 +29,8 @@ export function setupInput(
     const x = (clientX - rect.left - viewState.panX) / viewState.zoom;
     const y = (clientY - rect.top - viewState.panY) / viewState.zoom;
     return {
-      x: Math.floor(x / viewState.cellSize),
-      y: Math.floor(y / viewState.cellSize)
+      x: Math.floor(x / CELL_SIZE),
+      y: Math.floor(y / CELL_SIZE)
     };
   };
 

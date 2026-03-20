@@ -23,6 +23,11 @@ export const MoveState = {
 
 export type MoveState = (typeof MoveState)[keyof typeof MoveState];
 
+/**
+ * Grid settings
+ */
+export const CELL_SIZE = 48;
+
 
 /**
  * Metadata about an item type
@@ -183,7 +188,6 @@ export interface ViewState {
   panX: number;
   panY: number;
   zoom: number;
-  cellSize: number;
   selectedBuildingId: string | null;
   selectedDirection: Direction;
   previewCoords: { x: number; y: number } | null;

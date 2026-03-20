@@ -1,4 +1,5 @@
 import type { ViewState, WorldState, ItemInstance, Receiver, Sorter, RequestDefinition } from './types.ts';
+import { CELL_SIZE } from './types.ts';
 import { buildingsRegistry as registry, itemRegistry, propertyRegistry, requestRegistry } from './registry.ts';
 import { gridKey } from './world.ts';
 
@@ -9,8 +10,8 @@ export function renderGridLines(svgGrid: SVGGElement, view: ViewState, width: nu
   // Clear existing grid lines
   svgGrid.innerHTML = '';
 
-  const { panX, panY, zoom, cellSize } = view;
-  const scaledCellSize = cellSize * zoom;
+  const { panX, panY, zoom } = view;
+  const scaledCellSize = CELL_SIZE * zoom;
 
   // Determine the coordinate range visible in the viewport
   const startX = Math.floor(-panX / scaledCellSize);
@@ -64,7 +65,6 @@ function renderPreview(worldGroup: SVGGElement, view: ViewState, world?: WorldSt
   if (!view.selectedBuildingId || !view.previewCoords) return;
 
   const { x, y } = view.previewCoords;
-  const cellSize = view.cellSize;
   const isErase = view.selectedBuildingId === 'erase';
   const def = isErase ? null : registry.getBuilding(view.selectedBuildingId);
 
@@ -91,20 +91,19 @@ function renderPreview(worldGroup: SVGGElement, view: ViewState, world?: WorldSt
     strokeColor = isInvalid ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 255, 0, 0.5)';
   }
 
-  const cellSizeVal = cellSize;
   const rotation = (view.selectedDirection - 1) * 90;
-  const centerX = x * cellSizeVal + cellSizeVal / 2;
-  const centerY = y * cellSizeVal + cellSizeVal / 2;
+  const centerX = x * CELL_SIZE + CELL_SIZE / 2;
+  const centerY = y * CELL_SIZE + CELL_SIZE / 2;
 
   const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   group.setAttribute('class', 'building-preview');
   group.style.pointerEvents = 'none';
 
   const ghost = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  ghost.setAttribute('x', (x * cellSizeVal).toString());
-  ghost.setAttribute('y', (y * cellSizeVal).toString());
-  ghost.setAttribute('width', cellSizeVal.toString());
-  ghost.setAttribute('height', cellSizeVal.toString());
+  ghost.setAttribute('x', (x * CELL_SIZE).toString());
+  ghost.setAttribute('y', (y * CELL_SIZE).toString());
+  ghost.setAttribute('width', CELL_SIZE.toString());
+  ghost.setAttribute('height', CELL_SIZE.toString());
   ghost.setAttribute('fill', color);
   ghost.setAttribute('stroke', strokeColor);
   ghost.setAttribute('stroke-width', '2');
@@ -114,10 +113,10 @@ function renderPreview(worldGroup: SVGGElement, view: ViewState, world?: WorldSt
   if (iconPath) {
     const icon = document.createElementNS('http://www.w3.org/2000/svg', 'image');
     icon.setAttributeNS('http://www.w3.org/1999/xlink', 'href', iconPath);
-    icon.setAttribute('x', (x * cellSizeVal + 4).toString());
-    icon.setAttribute('y', (y * cellSizeVal + 4).toString());
-    icon.setAttribute('width', (cellSizeVal - 8).toString());
-    icon.setAttribute('height', (cellSizeVal - 8).toString());
+    icon.setAttribute('x', (x * CELL_SIZE + 4).toString());
+    icon.setAttribute('y', (y * CELL_SIZE + 4).toString());
+    icon.setAttribute('width', (CELL_SIZE - 8).toString());
+    icon.setAttribute('height', (CELL_SIZE - 8).toString());
     icon.setAttribute('opacity', '0.6');
     if (!isErase) {
       icon.setAttribute('transform', `rotate(${rotation}, ${centerX}, ${centerY})`);
@@ -144,14 +143,14 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
   world.staticObjects.forEach((obj) => {
     if (obj.type === 'garbage') {
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      const x = obj.x * 48;
-      const y = obj.y * 48;
+      const x = obj.x * CELL_SIZE;
+      const y = obj.y * CELL_SIZE;
 
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', x.toString());
       rect.setAttribute('y', y.toString());
-      rect.setAttribute('width', '48');
-      rect.setAttribute('height', '48');
+      rect.setAttribute('width', CELL_SIZE.toString());
+      rect.setAttribute('height', CELL_SIZE.toString());
       rect.setAttribute('fill', '#a5a5a5');
       rect.setAttribute('fill-opacity', '0.4');
       g.appendChild(rect);
@@ -165,10 +164,10 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
 
       for (let i = 0; i < 4; i++) {
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        const lx1 = x + pseudoRandom(seed + i * 10) * 48;
-        const ly1 = y + pseudoRandom(seed + i * 10 + 1) * 48;
-        const lx2 = x + pseudoRandom(seed + i * 10 + 2) * 48;
-        const ly2 = y + pseudoRandom(seed + i * 10 + 3) * 48;
+        const lx1 = x + pseudoRandom(seed + i * 10) * CELL_SIZE;
+        const ly1 = y + pseudoRandom(seed + i * 10 + 1) * CELL_SIZE;
+        const lx2 = x + pseudoRandom(seed + i * 10 + 2) * CELL_SIZE;
+        const ly2 = y + pseudoRandom(seed + i * 10 + 3) * CELL_SIZE;
         line.setAttribute('x1', lx1.toString());
         line.setAttribute('y1', ly1.toString());
         line.setAttribute('x2', lx2.toString());
@@ -192,10 +191,10 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
   
   world.buildings.forEach((building) => {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    const x = building.x * 48;
-    const y = building.y * 48;
-    const centerX = x + 24;
-    const centerY = y + 24;
+    const x = building.x * CELL_SIZE;
+    const y = building.y * CELL_SIZE;
+    const centerX = x + CELL_SIZE / 2;
+    const centerY = y + CELL_SIZE / 2;
     const rotation = ((building.direction ?? 1) - 1) * 90;
 
     // Icon
@@ -205,8 +204,8 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
       icon.setAttributeNS('http://www.w3.org/1999/xlink', 'href', def.iconPath);
       icon.setAttribute('x', (x + 4).toString());
       icon.setAttribute('y', (y + 4).toString());
-      icon.setAttribute('width', '40');
-      icon.setAttribute('height', '40');
+      icon.setAttribute('width', (CELL_SIZE - 8).toString());
+      icon.setAttribute('height', (CELL_SIZE - 8).toString());
       icon.setAttribute('transform', `rotate(${rotation}, ${centerX}, ${centerY})`);
       g.appendChild(icon);
     }
@@ -230,7 +229,7 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
 
       const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       label.setAttribute('x', centerX.toString());
-      label.setAttribute('y', (y + 46).toString());
+      label.setAttribute('y', (y + CELL_SIZE - 2).toString());
       label.setAttribute('text-anchor', 'middle');
       label.setAttribute('font-size', '9');
       label.setAttribute('font-family', 'sans-serif');
@@ -247,7 +246,7 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
       const receiver = building as Receiver;
       const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       label.setAttribute('x', centerX.toString());
-      label.setAttribute('y', (y + 46).toString());
+      label.setAttribute('y', (y + CELL_SIZE - 2).toString());
       label.setAttribute('text-anchor', 'middle');
       label.setAttribute('font-size', '9');
       label.setAttribute('font-family', 'sans-serif');
@@ -272,8 +271,8 @@ export function renderWorld(world: WorldState, worldGroup: SVGGElement, view?: V
   itemsLayer.innerHTML = '';
 
   const renderItem = (item: ItemInstance) => {
-    const cx = item.renderX * 48 + 24;
-    const cy = item.renderY * 48 + 24;
+    const cx = item.renderX * CELL_SIZE + CELL_SIZE / 2;
+    const cy = item.renderY * CELL_SIZE + CELL_SIZE / 2;
     const def = itemRegistry.getItem(item.defId);
     if (!def) return;
 

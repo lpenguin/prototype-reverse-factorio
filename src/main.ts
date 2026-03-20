@@ -1,5 +1,6 @@
 import { createWorld } from './world.ts';
 import type { ViewState, ItemInstance } from './types.ts';
+import { CELL_SIZE } from './types.ts';
 import { setupInput } from './input.ts';
 import { buildingsRegistry as registry } from './registry.ts';
 import { updateHUD, renderWorld } from './renderer.ts';
@@ -12,7 +13,6 @@ function init() {
     panX: window.innerWidth / 2,
     panY: window.innerHeight / 2,
     zoom: 1,
-    cellSize: 48,
     selectedBuildingId: null,
     selectedDirection: 1, // Default to East
     previewCoords: null,
