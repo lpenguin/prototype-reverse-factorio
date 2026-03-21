@@ -364,35 +364,15 @@ function executeTickets(tickets: Ticket[], world: WorldState): void {
   world.items = nextItems;
 }
 
-function scannerSignalMatches(world: WorldState, scanner: Scanner): boolean {
-  const { dx, dy } = getDirectionOffset(scanner.direction);
-  const scanKey = gridKey(scanner.x + dx, scanner.y + dy);
-  const item = world.items.get(scanKey);
-  if (!item) return false;
-  return itemMatchesFilter(item, scanner.filterProperty, scanner.filterValue);
-}
-
 function propagateSignals(world: WorldState): void {
   world.signals.clear();
 
   const queue: string[] = [];
   const energizedWireCells = new Set<string>();
 
-  for (const [, building] of world.buildings) {
-    if (building.type !== 'scanner') continue;
-    const scanner = building as Scanner;
-    if (!scannerSignalMatches(world, scanner)) continue;
-    const scannerKey = gridKey(scanner.x, scanner.y);
-    if (world.wireCells.has(scannerKey)) {
-      queue.push(scannerKey);
-    }
-  }
-
   for (const [key, building] of world.buildings) {
-    if (building.type !== 'button') continue;
-    const button = building as Button;
-    if (!button.isOn) continue;
-    if (world.wireCells.has(key)) {
+    const handler = handlers.get(building.type);
+    if (handler?.emitsSignal(world, building) && world.wireCells.has(key)) {
       queue.push(key);
     }
   }
@@ -469,6 +449,10 @@ export abstract class BuildingHandler<T extends Building> {
   spawnItem(_world: WorldState, _building: T, _key: string): void {
     // default: no spawning
   }
+
+  emitsSignal(_world: WorldState, _building: T): boolean {
+    return false;
+  }
 }
 
 class ReceiverHandler extends BuildingHandler<Receiver> {
@@ -535,17 +519,33 @@ class EmitterHandler extends BuildingHandler<Emitter> {
   }
 }
 
+class ScannerHandler extends BuildingHandler<Scanner> {
+  accept() { return false; }
+
+  emitsSignal(world: WorldState, scanner: Scanner): boolean {
+    const { dx, dy } = getDirectionOffset(scanner.direction);
+    const scanKey = gridKey(scanner.x + dx, scanner.y + dy);
+    const item = world.items.get(scanKey);
+    if (!item) return false;
+    return itemMatchesFilter(item, scanner.filterProperty, scanner.filterValue);
+  }
+}
+
+class ButtonHandler extends BuildingHandler<Button> {
+  accept() { return false; }
+
+  emitsSignal(_world: WorldState, button: Button): boolean {
+    return button.isOn;
+  }
+}
+
 const handlers = new Map<BuildingType, BuildingHandler<Building>>([
   ['emitter',  new EmitterHandler()],
   ['belt',     new BeltHandler()],
   ['receiver', new ReceiverHandler()],
-  ['scanner',  new (class extends BuildingHandler<Scanner> {
-    accept() { return false; }
-  })()],
+  ['scanner',  new ScannerHandler()],
   ['arm',      new ArmHandler()],
-  ['button',   new (class extends BuildingHandler<Button> {
-    accept() { return false; }
-  })()],
+  ['button',   new ButtonHandler()],
   ['lamp',     new (class extends BuildingHandler<Lamp> {
     accept() { return false; }
   })()],
