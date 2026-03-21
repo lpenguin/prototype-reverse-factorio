@@ -382,3 +382,82 @@ describe('Button and Lamp Signals', () => {
     expect(world.signals.get(gridKey(2, 0))).toBe(true);
   });
 });
+
+describe('Emitter', () => {
+  function placeEmitter(world: ReturnType<typeof createWorld>, x: number, y: number, dir: typeof Direction[keyof typeof Direction], itemPool: string[]) {
+    const key = gridKey(x, y);
+    world.staticObjects.set(key, { type: 'garbage', x, y, itemPool });
+    placeBuilding(world, { type: 'emitter', x, y, direction: dir });
+  }
+
+  it('should spawn an item and move it forward in one tick', () => {
+    const world = createWorld();
+    placeEmitter(world, 0, 0, Direction.E, ['iron']);
+    placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.E });
+
+    tickWorld(world);
+
+    // Item spawned at emitter, then moved to belt
+    expect(world.items.has(gridKey(1, 0))).toBe(true);
+    expect(world.items.get(gridKey(1, 0))?.defId).toBe('iron');
+    // Emitter cell is now free for next spawn
+    expect(world.items.has(gridKey(0, 0))).toBe(false);
+  });
+
+  it('should keep item on emitter when output is blocked', () => {
+    const world = createWorld();
+    placeEmitter(world, 0, 0, Direction.E, ['iron']);
+    placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.E });
+
+    // Block the output belt with an existing item
+    addItem(world, { defId: 'copper', x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 0 });
+    // Also block the belt's forward so the copper can't move either
+    addItem(world, { defId: 'stone', x: 2, y: 0, renderX: 2, renderY: 0, renderScale: 0 });
+
+    tickWorld(world);
+
+    // item spawned on emitter but couldn't move — stays on emitter
+    expect(world.items.has(gridKey(0, 0))).toBe(true);
+    expect(world.items.get(gridKey(0, 0))?.defId).toBe('iron');
+    // blocked items stay put
+    expect(world.items.has(gridKey(1, 0))).toBe(true);
+  });
+
+  it('should move blocked emitter item on next tick when output clears', () => {
+    const world = createWorld();
+    placeEmitter(world, 0, 0, Direction.E, ['iron']);
+    placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.E });
+    placeBuilding(world, createTestReceiver(2, 0, Direction.E));
+
+    // Block the output belt
+    addItem(world, { defId: 'copper', x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 0 });
+
+    // Tick 1: emitter spawns item, copper moves to receiver, emitter item blocked
+    tickWorld(world);
+
+    // copper moved into receiver, emitter item should have moved to belt
+    // (both resolve in same tick: copper moves to receiver, emitter moves to belt)
+    expect(world.items.has(gridKey(1, 0))).toBe(true);
+    expect(world.items.get(gridKey(1, 0))?.defId).toBe('iron');
+    expect(world.items.has(gridKey(0, 0))).toBe(false);
+  });
+
+  it('should not spawn a second item while one is still on the emitter', () => {
+    const world = createWorld();
+    placeEmitter(world, 0, 0, Direction.E, ['iron']);
+    placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.E });
+
+    // Block the output belt so item stays on emitter
+    addItem(world, { defId: 'copper', x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 0 });
+    addItem(world, { defId: 'stone', x: 2, y: 0, renderX: 2, renderY: 0, renderScale: 0 });
+
+    tickWorld(world); // spawns first item — blocked, stays on emitter
+    const firstItem = world.items.get(gridKey(0, 0));
+    expect(firstItem).toBeDefined();
+    expect(firstItem?.defId).toBe('iron');
+
+    tickWorld(world); // should NOT spawn a second item (cell occupied)
+    const secondItem = world.items.get(gridKey(0, 0));
+    expect(secondItem?.id).toBe(firstItem?.id); // same item, not replaced
+  });
+});

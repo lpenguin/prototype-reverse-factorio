@@ -27,3 +27,21 @@ Follow this sequence for any code modification:
     npm run test
     ```
 
+## Commit Message Style
+
+Follow the Conventional Commits specification for all changes:
+
+- **Format:**
+  - **1st line:** `<type>: <short summary>`
+  - **2nd line:** (empty)
+  - **3-n lines:** Detailed description of the changes
+- **Types:**
+  - `feat`: A new feature
+  - `fix`: A bug fix
+  - `docs`: Documentation only changes
+  - `style`: Changes that do not affect the meaning of the code (white-space, formatting, etc)
+  - `refactor`: A code change that neither fixes a bug nor adds a feature
+  - `perf`: A code change that improves performance
+  - `test`: Adding missing tests or correcting existing tests
+  - `chore`: Changes to the build process or auxiliary tools and libraries
+

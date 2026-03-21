@@ -1,25 +1,29 @@
 /**
- * simulation.ts — 3-phase tick algorithm
+ * simulation.ts — tick algorithm
  *
- * Phase 1: Intent Generation
- *   Every item (including virtual emitter items) declares an ordered list of
- *   desired destination cells ("intents").
+ * Pre-phase: Item Spawning (generateNewItems)
+ *   Emitters with a non-empty item pool and no item on their cell spawn a new
+ *   real item at the emitter cell.  The item then participates in phases 1-3
+ *   like any other item.
+ *
+ * Phase 1: Intent Generation (generateIntents)
+ *   Every item declares an ordered list of desired destination cells ("intents").
  *
  *   - Item on a Belt:  intents = [belt_forward]
  *     Special case: if a powered Arm targets this cell, the arm intent
  *     (outputKey) is prepended as the primary intent (belt_forward = fallback).
- *   - Virtual Emitter item: intents = [emitter_forward]
+ *   - Item on an Emitter: intents = [emitter_forward]
  *
- * Phase 2: Iterative Resolution
+ * Phase 2: Iterative Resolution (resolveIntents)
  *   Proposals are gathered, merge conflicts resolved by Round-Robin (clockwise
  *   from last accepted direction), and DFS cycle detection unlocks circular
  *   moving loops.  Losers / blocked items try their next intent (Overflow).
  *
- * Phase 3: Execution (double-buffer)
+ * Phase 3: Execution (executeTickets — double-buffer)
  *   A new nextItems map is built.  LOCKED_MOVING items are placed in nextItems
  *   at their target; BLOCKED items are kept at their current cell.
- *   Emitter virtuals spawn new real items; receivers consume arriving items.
- *   Round-robin state is updated, then world.items = nextItems.
+ *   Receivers consume arriving items.  Round-robin state is updated,
+ *   then world.items = nextItems.
  */
 
 import type {
@@ -45,14 +49,12 @@ import { gridKey, getDirectionOffset, nextItemId } from './world.ts';
 // ---------------------------------------------------------------------------
 
 interface Ticket {
-  /** Stable key.  Real items: "x,y".  Virtual emitters: "emitter:x,y". */
+  /** Grid key of the source cell ("x,y"). */
   id: string;
-  /** Null for virtual emitter tickets. */
-  item: ItemInstance | null;
+  /** The item being moved. */
+  item: ItemInstance;
   /** Source cell key (where the item currently is). */
   sourceKey: string;
-  /** For virtual emitter tickets: emitter building key. */
-  emitterKey?: string;
   /** Ordered list of candidate destination grid-keys. */
   intents: string[];
   /** Index into `intents` currently being tried. */
@@ -107,6 +109,25 @@ function cwPriority(arrivalDir: Direction, lastDir: Direction): number {
 }
 
 // ---------------------------------------------------------------------------
+// Pre-phase: Item Spawning
+// ---------------------------------------------------------------------------
+
+function generateNewItems(world: WorldState): void {
+  for (const [key, building] of world.buildings) {
+    if (building.type !== 'emitter') continue;
+    if (world.items.has(key)) continue; // already holding an item
+    const staticObj = world.staticObjects.get(key);
+    if (!staticObj || staticObj.type !== 'garbage' || staticObj.itemPool.length === 0) continue;
+    const itemDefId = staticObj.itemPool[Math.floor(Math.random() * staticObj.itemPool.length)];
+    world.items.set(key, {
+      id: nextItemId(), defId: itemDefId,
+      x: building.x, y: building.y,
+      renderX: building.x, renderY: building.y, renderScale: 0,
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Phase 1: Intent Generation
 // ---------------------------------------------------------------------------
 
@@ -148,17 +169,8 @@ function generateIntents(world: WorldState): Ticket[] {
       // is tried first; belt forward becomes the fallback.
       addProposal(inputKey, 1, outputKey);
     } else if (building.type === 'emitter') {
-      const staticObj = world.staticObjects.get(key);
-      if (!staticObj || staticObj.type !== 'garbage' || staticObj.itemPool.length === 0) continue;
-      tickets.push({
-        id: `emitter:${key}`,
-        item: null,
-        sourceKey: key,
-        emitterKey: key,
-        intents: [gridKey(building.x + dx, building.y + dy)],
-        intentIndex: 0,
-        state: MoveState.UNRESOLVED,
-      });
+      if (!world.items.has(key)) continue;
+      addProposal(key, 0, gridKey(building.x + dx, building.y + dy));
     }
   }
 
@@ -182,7 +194,7 @@ function generateIntents(world: WorldState): Ticket[] {
 
 function canHoldItems(building?: Building): boolean {
   if (!building) return true;
-  return building.type === 'belt' || building.type === 'receiver';
+  return building.type === 'belt' || building.type === 'receiver' || building.type === 'emitter';
 }
 
 // ---------------------------------------------------------------------------
@@ -234,7 +246,7 @@ function checkCanMove(
 function resolveIntents(tickets: Ticket[], world: WorldState): void {
   const ticketBySourceKey = new Map<string, Ticket>();
   for (const t of tickets) {
-    if (t.item) ticketBySourceKey.set(t.sourceKey, t);
+    ticketBySourceKey.set(t.sourceKey, t);
   }
 
   const states = new Map<string, MoveState>();
@@ -331,7 +343,7 @@ function executeTickets(tickets: Ticket[], world: WorldState): void {
   // Next state: start with all BLOCKED items staying in place
   const nextItems = new Map<string, ItemInstance>();
   for (const t of tickets) {
-    if (t.item && t.state === MoveState.BLOCKED) {
+    if (t.state === MoveState.BLOCKED) {
       nextItems.set(t.sourceKey, t.item);
     }
   }
@@ -353,36 +365,11 @@ function executeTickets(tickets: Ticket[], world: WorldState): void {
     const targetBuilding = world.buildings.get(targetKey);
 
     if (!canHoldItems(targetBuilding)) {
-      if (ticket.item) {
-        nextItems.set(ticket.sourceKey, ticket.item);
-      }
+      nextItems.set(ticket.sourceKey, ticket.item);
       continue;
     }
 
-    // Virtual emitter: spawn a new item
-    if (ticket.item === null) {
-      const emitterKey = ticket.emitterKey!;
-      const staticObj = world.staticObjects.get(emitterKey);
-      if (!staticObj || staticObj.itemPool.length === 0) continue;
-
-      const itemDefId = staticObj.itemPool[Math.floor(Math.random() * staticObj.itemPool.length)];
-      const [ex, ey] = emitterKey.split(',').map(Number);
-
-      const receiverTarget = targetBuilding as Receiver | undefined;
-      if (receiverTarget?.type === 'receiver') {
-      // Spawned directly into a receiver — score it; item visually travels emitter → receiver
-      scoreReceiver(world, receiverTarget, {
-        id: nextItemId(), defId: itemDefId, x: tx, y: ty, renderX: ex, renderY: ey, renderScale: 0,
-      });
-      } else {
-        // Item appears at emitter cell (renderX/Y) and lerps to output cell (x/y)
-        nextItems.set(targetKey, { id: nextItemId(), defId: itemDefId, x: tx, y: ty, renderX: ex, renderY: ey, renderScale: 0 });
-      }
-      updateLastAccepted(world, targetKey, emitterKey);
-      continue;
-    }
-
-    // Real item
+    // Receiver: consume the item
     const receiverTarget = targetBuilding as Receiver | undefined;
     if (receiverTarget?.type === 'receiver') {
       // Move item logically to the receiver cell so the dying animation
@@ -553,6 +540,7 @@ export function getHandler(type: BuildingType): BuildingHandler<Building> | unde
 export function tickWorld(world: WorldState): void {
   world.tick++;
   propagateSignals(world);
+  generateNewItems(world);
   const tickets = generateIntents(world);
   resolveIntents(tickets, world);
   executeTickets(tickets, world);
