@@ -461,3 +461,101 @@ describe('Emitter', () => {
     expect(secondItem?.id).toBe(firstItem?.id); // same item, not replaced
   });
 });
+
+describe('Splitter', () => {
+  // Splitter facing East at (5, 5):
+  //   anchor:        (5, 5)  — blocked, items CANNOT land here
+  //   secondary:     (5, 6)  — input holding cell, items arrive here
+  //   input port:    (4, 6)  — belt at this cell feeds items into secondary
+  //   output1 port:  (6, 5)  — East of anchor
+  //   output2 port:  (6, 6)  — East of secondary
+
+  it('should route the first item to output1 (initial round-robin state)', () => {
+    const world = createWorld();
+    placeBuilding(world, { type: 'splitter', x: 5, y: 5, direction: Direction.E });
+    placeBuilding(world, { type: 'belt', x: 6, y: 5, direction: Direction.E }); // output1
+    placeBuilding(world, { type: 'belt', x: 6, y: 6, direction: Direction.E }); // output2
+
+    // Item at secondary (input holding) cell
+    addItem(world, { defId: 'iron', x: 5, y: 6, renderX: 5, renderY: 6, renderScale: 1 });
+
+    tickWorld(world);
+
+    // lastOutputSide=undefined → preferOutput1=true → item goes to output1 (6,5)
+    expect(world.items.has(gridKey(5, 6))).toBe(false);
+    expect(world.items.has(gridKey(6, 5))).toBe(true);
+    expect(world.items.has(gridKey(6, 6))).toBe(false);
+  });
+
+  it('should route the second item to output2 (round-robin alternation)', () => {
+    const world = createWorld();
+    placeBuilding(world, { type: 'splitter', x: 5, y: 5, direction: Direction.E });
+    placeBuilding(world, { type: 'belt', x: 6, y: 5, direction: Direction.E }); // output1
+    placeBuilding(world, { type: 'belt', x: 6, y: 6, direction: Direction.E }); // output2
+
+    // First tick: item at secondary (5,6) → output1 (6,5), sets lastOutputSide=0
+    addItem(world, { defId: 'iron', x: 5, y: 6, renderX: 5, renderY: 6, renderScale: 1 });
+    tickWorld(world);
+
+    // Second tick: lastOutputSide=0 → preferOutput1=false → item goes to output2 (6,6)
+    addItem(world, { defId: 'iron', x: 5, y: 6, renderX: 5, renderY: 6, renderScale: 1 });
+    tickWorld(world);
+
+    expect(world.items.has(gridKey(5, 6))).toBe(false);
+    expect(world.items.has(gridKey(6, 6))).toBe(true);
+  });
+
+  it('should fall back to output2 when output1 is blocked by an immovable item', () => {
+    const world = createWorld();
+    placeBuilding(world, { type: 'splitter', x: 5, y: 5, direction: Direction.E });
+    // Only output2 belt present — output1 (6,5) has no building
+    placeBuilding(world, { type: 'belt', x: 6, y: 6, direction: Direction.E }); // output2
+
+    // Block output1 (6,5) with an item but no building → cannot hold items
+    addItem(world, { defId: 'iron', x: 6, y: 5, renderX: 6, renderY: 5, renderScale: 1 });
+    // Item at input holding cell
+    addItem(world, { defId: 'iron', x: 5, y: 6, renderX: 5, renderY: 6, renderScale: 1 });
+
+    tickWorld(world);
+
+    // output1 (6,5) preferred but blocked → falls back to output2 (6,6)
+    expect(world.items.has(gridKey(6, 6))).toBe(true);
+    expect(world.items.has(gridKey(5, 6))).toBe(false);
+    // The blocker item at (6,5) stays put
+    expect(world.items.has(gridKey(6, 5))).toBe(true);
+  });
+
+  it('should allow a belt at the input port to feed items into the secondary cell', () => {
+    const world = createWorld();
+    placeBuilding(world, { type: 'splitter', x: 5, y: 5, direction: Direction.E });
+    placeBuilding(world, { type: 'belt', x: 4, y: 6, direction: Direction.E }); // input belt at (-1,1)
+    placeBuilding(world, { type: 'belt', x: 6, y: 5, direction: Direction.E }); // output1
+    placeBuilding(world, { type: 'belt', x: 6, y: 6, direction: Direction.E }); // output2
+
+    addItem(world, { defId: 'iron', x: 4, y: 6, renderX: 4, renderY: 6, renderScale: 1 });
+
+    // Tick 1: belt moves item from input port (4,6) → secondary (5,6)
+    tickWorld(world);
+    expect(world.items.has(gridKey(4, 6))).toBe(false);
+    expect(world.items.has(gridKey(5, 6))).toBe(true);
+
+    // Tick 2: splitter routes item from secondary (5,6) → output1 (6,5)
+    tickWorld(world);
+    expect(world.items.has(gridKey(5, 6))).toBe(false);
+    expect(world.items.has(gridKey(6, 5))).toBe(true);
+  });
+
+  it('should block placement of other buildings on the secondary cell', () => {
+    const world = createWorld();
+    placeBuilding(world, { type: 'splitter', x: 5, y: 5, direction: Direction.E });
+
+    // Secondary cell (5, 6) is reserved
+    expect(world.buildingSecondary.has(gridKey(5, 6))).toBe(true);
+    expect(world.buildingSecondary.get(gridKey(5, 6))).toBe(gridKey(5, 5));
+
+    // Trying to place any building on the secondary cell must fail
+    const result = placeBuilding(world, { type: 'belt', x: 5, y: 6, direction: Direction.E });
+    expect(result).toBe(false);
+    expect(world.buildings.has(gridKey(5, 6))).toBe(false);
+  });
+});

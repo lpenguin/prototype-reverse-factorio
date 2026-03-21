@@ -1,10 +1,10 @@
-import type { ViewState, WorldState, ItemInstance, Building, Receiver, StaticObject, Button } from './types.ts';
+import type { ViewState, WorldState, ItemInstance, Building, Receiver, StaticObject, Button, Splitter } from './types.ts';
 import { CELL_SIZE } from './types.ts';
 import * as TWEEN from '@tweenjs/tween.js';
 import { SceneNode, GroupNode, SpriteNode, ShapeNode, TextNode, LineNode, InlineSvgNode } from './scene.ts';
 import { SceneManager } from './scene-manager.ts';
 import { buildingsRegistry as registry, itemRegistry, propertyRegistry } from './registry.ts';
-import { gridKey } from './world.ts';
+import { gridKey, getDirectionOffset } from './world.ts';
 import armInlineSvg from './assets/arm.inline.svg?raw';
 
 /**
@@ -236,6 +236,60 @@ export class WorldRenderer {
       group.addChild(icon);
       state.icon = icon;
       state.armPart = icon.getElementByOriginalId('robotic-arm');
+    } else if (building.type === 'splitter' && def?.iconPath) {
+      // 2-cell sprite: pivot at center of the 2-cell span (anchor + secondary)
+      const splitter = building as Splitter;
+      const { dx, dy } = getDirectionOffset(splitter.direction);
+      // Secondary cell is perpendicular-right of anchor: (x-dy, y+dx)
+      const spanCenterX = (building.x + 0.5 - 0.5 * dy) * CELL_SIZE;
+      const spanCenterY = (building.y + 0.5 + 0.5 * dx) * CELL_SIZE;
+      const splitterRotation = (splitter.direction - 1) * 90;
+
+      const icon = new SpriteNode();
+      icon.href = def.iconPath;
+      icon.width = CELL_SIZE - 8;
+      icon.height = 2 * CELL_SIZE - 8;
+      icon.imgX = spanCenterX - (CELL_SIZE - 8) / 2;
+      icon.imgY = spanCenterY - (2 * CELL_SIZE - 8) / 2;
+      icon.imgRotation = splitterRotation;
+      icon.imgPivotX = spanCenterX;
+      icon.imgPivotY = spanCenterY;
+      group.addChild(icon);
+      state.icon = icon;
+
+      // Debug port circles
+      // Green: input port — one step behind secondary cell: (x-dy-dx, y+dx-dy)
+      const inputCircle = new ShapeNode('circle');
+      inputCircle.x = (building.x - dy - dx) * CELL_SIZE + CELL_SIZE / 2;
+      inputCircle.y = (building.y + dx - dy) * CELL_SIZE + CELL_SIZE / 2;
+      inputCircle.size = 12;
+      inputCircle.fill = '#22c55e';
+      inputCircle.fillOpacity = 0.85;
+      inputCircle.stroke = '#166534';
+      inputCircle.strokeWidth = 2;
+      group.addChild(inputCircle);
+
+      // Red: output1 port (ahead of anchor)
+      const out1Circle = new ShapeNode('circle');
+      out1Circle.x = (building.x + dx) * CELL_SIZE + CELL_SIZE / 2;
+      out1Circle.y = (building.y + dy) * CELL_SIZE + CELL_SIZE / 2;
+      out1Circle.size = 12;
+      out1Circle.fill = '#ef4444';
+      out1Circle.fillOpacity = 0.85;
+      out1Circle.stroke = '#7f1d1d';
+      out1Circle.strokeWidth = 2;
+      group.addChild(out1Circle);
+
+      // Red: output2 port (ahead of secondary cell)
+      const out2Circle = new ShapeNode('circle');
+      out2Circle.x = (building.x + dx - dy) * CELL_SIZE + CELL_SIZE / 2;
+      out2Circle.y = (building.y + dy + dx) * CELL_SIZE + CELL_SIZE / 2;
+      out2Circle.size = 12;
+      out2Circle.fill = '#ef4444';
+      out2Circle.fillOpacity = 0.85;
+      out2Circle.stroke = '#7f1d1d';
+      out2Circle.strokeWidth = 2;
+      group.addChild(out2Circle);
     } else if (def?.iconPath) {
       const icon = new SpriteNode();
       if (building.type === 'button') {
@@ -472,7 +526,15 @@ export class WorldRenderer {
     const def = isErase ? null : registry.getBuilding(buildingId);
 
     const key = gridKey(x, y);
-    const isOccupied = world.buildings.has(key);
+    const isOccupied = world.buildings.has(key) || world.buildingSecondary.has(key);
+
+    // For multi-cell buildings also check the secondary cell
+    let isSecondaryOccupied = false;
+    if (def && (def.size.x > 1 || def.size.y > 1)) {
+      const { dx: sdx, dy: sdy } = getDirectionOffset(dir);
+      const secondaryKey = gridKey(x - sdy, y + sdx);
+      isSecondaryOccupied = world.buildings.has(secondaryKey) || world.buildingSecondary.has(secondaryKey);
+    }
 
     let isInvalidStatic = false;
     if (def?.preferredStaticTypes && def.preferredStaticTypes.length > 0) {
@@ -481,7 +543,7 @@ export class WorldRenderer {
         isInvalidStatic = true;
       }
     }
-    const isInvalid = isOccupied || isInvalidStatic;
+    const isInvalid = isOccupied || isSecondaryOccupied || isInvalidStatic;
 
     let color: string, strokeColor: string;
     if (isErase) {
@@ -499,30 +561,69 @@ export class WorldRenderer {
     const group = new GroupNode();
     group.el.style.pointerEvents = 'none';
 
-    // Ghost rect
-    const ghost = new ShapeNode('rect');
-    ghost.setRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-    ghost.fill = color;
-    ghost.stroke = strokeColor;
-    ghost.strokeWidth = 2;
-    group.addChild(ghost);
+    if (buildingId === 'splitter') {
+      // 2-cell ghost: anchor + secondary (perpendicular-right) cell
+      const { dx: sdx, dy: sdy } = getDirectionOffset(dir);
+      const sx = x - sdy;
+      const sy = y + sdx;
 
-    // Icon
-    const iconPath = isErase ? '/icons/erase.svg' : def?.iconPath;
-    if (iconPath) {
-      const icon = new SpriteNode();
-      icon.href = iconPath;
-      icon.imgX = x * CELL_SIZE + 4;
-      icon.imgY = y * CELL_SIZE + 4;
-      icon.width = CELL_SIZE - 8;
-      icon.height = CELL_SIZE - 8;
-      icon.imgOpacity = 0.6;
-      if (!isErase) {
-        icon.imgRotation = rotation;
-        icon.imgPivotX = centerX;
-        icon.imgPivotY = centerY;
+      const anchorGhost = new ShapeNode('rect');
+      anchorGhost.setRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      anchorGhost.fill = color;
+      anchorGhost.stroke = strokeColor;
+      anchorGhost.strokeWidth = 2;
+      group.addChild(anchorGhost);
+
+      const secondaryGhost = new ShapeNode('rect');
+      secondaryGhost.setRect(sx * CELL_SIZE, sy * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      secondaryGhost.fill = color;
+      secondaryGhost.stroke = strokeColor;
+      secondaryGhost.strokeWidth = 2;
+      group.addChild(secondaryGhost);
+
+      // 2-cell icon (same math as _applyBuildingState)
+      if (def?.iconPath) {
+        const spanCenterX = (x + 0.5 - 0.5 * sdy) * CELL_SIZE;
+        const spanCenterY = (y + 0.5 + 0.5 * sdx) * CELL_SIZE;
+        const splitterRotation = (dir - 1) * 90;
+        const icon = new SpriteNode();
+        icon.href = def.iconPath;
+        icon.width = CELL_SIZE - 8;
+        icon.height = 2 * CELL_SIZE - 8;
+        icon.imgX = spanCenterX - (CELL_SIZE - 8) / 2;
+        icon.imgY = spanCenterY - (2 * CELL_SIZE - 8) / 2;
+        icon.imgOpacity = 0.6;
+        icon.imgRotation = splitterRotation;
+        icon.imgPivotX = spanCenterX;
+        icon.imgPivotY = spanCenterY;
+        group.addChild(icon);
       }
-      group.addChild(icon);
+    } else {
+      // Ghost rect
+      const ghost = new ShapeNode('rect');
+      ghost.setRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      ghost.fill = color;
+      ghost.stroke = strokeColor;
+      ghost.strokeWidth = 2;
+      group.addChild(ghost);
+
+      // Icon
+      const iconPath = isErase ? '/icons/erase.svg' : def?.iconPath;
+      if (iconPath) {
+        const icon = new SpriteNode();
+        icon.href = iconPath;
+        icon.imgX = x * CELL_SIZE + 4;
+        icon.imgY = y * CELL_SIZE + 4;
+        icon.width = CELL_SIZE - 8;
+        icon.height = CELL_SIZE - 8;
+        icon.imgOpacity = 0.6;
+        if (!isErase) {
+          icon.imgRotation = rotation;
+          icon.imgPivotX = centerX;
+          icon.imgPivotY = centerY;
+        }
+        group.addChild(icon);
+      }
     }
 
     this.scene.addNode('preview', 'ghost', group);

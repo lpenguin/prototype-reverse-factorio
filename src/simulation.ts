@@ -39,6 +39,7 @@ import type {
   Arm,
   Button,
   Lamp,
+  Splitter,
 } from './types.ts';
 import { MoveState } from './types.ts';
 import { itemRegistry } from './registry.ts';
@@ -163,7 +164,12 @@ function buildTickets(proposals: MoveProposal[], world: WorldState): Ticket[] {
   return tickets;
 }
 
-function canHoldItems(building?: Building): boolean {
+function canHoldItems(building: Building | undefined, world: WorldState, targetKey: string): boolean {
+  if (world.buildingSecondary.has(targetKey)) {
+    // Only the splitter's secondary cell can receive items (it's the input port)
+    const anchorKey = world.buildingSecondary.get(targetKey)!;
+    return world.buildings.get(anchorKey)?.type === 'splitter';
+  }
   if (!building) return true;
   return building.type === 'belt' || building.type === 'receiver' || building.type === 'emitter';
 }
@@ -189,7 +195,7 @@ function checkCanMove(
   const targetKey = ticket.intents[ticket.intentIndex];
   const targetBuilding = world.buildings.get(targetKey);
 
-  if (!canHoldItems(targetBuilding)) {
+  if (!canHoldItems(targetBuilding, world, targetKey)) {
     states.set(ticket.id, MoveState.UNRESOLVED);
     return false;
   }
@@ -335,7 +341,7 @@ function executeTickets(tickets: Ticket[], world: WorldState): void {
     const [tx, ty] = targetKey.split(',').map(Number);
     const targetBuilding = world.buildings.get(targetKey);
 
-    if (!canHoldItems(targetBuilding)) {
+    if (!canHoldItems(targetBuilding, world, targetKey)) {
       nextItems.set(ticket.sourceKey, ticket.item);
       continue;
     }
@@ -358,6 +364,17 @@ function executeTickets(tickets: Ticket[], world: WorldState): void {
     ticket.item.y = ty;
     nextItems.set(targetKey, ticket.item);
     updateLastAccepted(world, targetKey, ticket.sourceKey);
+
+    // Update splitter round-robin state
+    // sourceKey is the secondary (input) cell — look up the anchor via buildingSecondary
+    const sourceAnchorKey = world.buildingSecondary.get(ticket.sourceKey) ?? ticket.sourceKey;
+    const sourceBuilding = world.buildings.get(sourceAnchorKey);
+    if (sourceBuilding?.type === 'splitter') {
+      const splitter = sourceBuilding as Splitter;
+      const { dx, dy } = getDirectionOffset(splitter.direction);
+      const output1Key = gridKey(splitter.x + dx, splitter.y + dy);
+      splitter.lastOutputSide = targetKey === output1Key ? 0 : 1;
+    }
   }
 
   // Swap buffer
@@ -539,6 +556,29 @@ class ButtonHandler extends BuildingHandler<Button> {
   }
 }
 
+class SplitterHandler extends BuildingHandler<Splitter> {
+  accept() { return false; }
+
+  generateIntents(world: WorldState, splitter: Splitter, _key: string): MoveProposal[] {
+    const { dx, dy } = getDirectionOffset(splitter.direction);
+    // Input arrives at the secondary cell (perpendicular-right of anchor)
+    const inputKey = gridKey(splitter.x - dy, splitter.y + dx);
+    if (!world.items.has(inputKey)) return [];
+    // output1: ahead of anchor cell
+    const output1Key = gridKey(splitter.x + dx,       splitter.y + dy);
+    // output2: ahead of secondary cell
+    const output2Key = gridKey(splitter.x + dx - dy,  splitter.y + dy + dx);
+    // Round-robin: prefer the output NOT used last
+    const preferOutput1 = splitter.lastOutputSide !== 0;
+    const primary   = preferOutput1 ? output1Key : output2Key;
+    const secondary = preferOutput1 ? output2Key : output1Key;
+    return [
+      { sourceKey: inputKey, priority: 1, intent: primary },
+      { sourceKey: inputKey, priority: 0, intent: secondary },
+    ];
+  }
+}
+
 const handlers = new Map<BuildingType, BuildingHandler<Building>>([
   ['emitter',  new EmitterHandler()],
   ['belt',     new BeltHandler()],
@@ -546,6 +586,7 @@ const handlers = new Map<BuildingType, BuildingHandler<Building>>([
   ['scanner',  new ScannerHandler()],
   ['arm',      new ArmHandler()],
   ['button',   new ButtonHandler()],
+  ['splitter', new SplitterHandler()],
   ['lamp',     new (class extends BuildingHandler<Lamp> {
     accept() { return false; }
   })()],

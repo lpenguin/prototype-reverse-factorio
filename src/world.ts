@@ -32,6 +32,7 @@ export function createWorld(): WorldState {
     wireCells: new Set(),
     signals: new Map(),
     staticObjects: new Map(),
+    buildingSecondary: new Map(),
     requests: [], // Start with an empty repository
     playerMoney: 0,
     tick: 0,
@@ -90,12 +91,19 @@ function generateGarbage(world: WorldState) {
 }
 
 /**
+ * Returns true if a cell is occupied by a building (anchor or secondary).
+ */
+export function isCellOccupied(world: WorldState, key: string): boolean {
+  return world.buildings.has(key) || world.buildingSecondary.has(key);
+}
+
+/**
  * Place a building in the world
  * @returns true if building was placed, false if spot was occupied or invalid
  */
 export function placeBuilding(world: WorldState, building: Building): boolean {
   const key = gridKey(building.x, building.y);
-  if (world.buildings.has(key)) return false;
+  if (isCellOccupied(world, key)) return false;
 
   // Check preferred static types
   const def = buildingsRegistry.getAllBuildings().find(d => d.type === building.type);
@@ -104,6 +112,14 @@ export function placeBuilding(world: WorldState, building: Building): boolean {
     if (!staticObj || !def.preferredStaticTypes.includes(staticObj.type)) {
       return false;
     }
+  }
+
+  // For multi-cell buildings, reserve the secondary (perpendicular-right) cell
+  if (def && (def.size.x > 1 || def.size.y > 1)) {
+    const { dx, dy } = getDirectionOffset(building.direction);
+    const secondaryKey = gridKey(building.x - dy, building.y + dx);
+    if (isCellOccupied(world, secondaryKey)) return false;
+    world.buildingSecondary.set(secondaryKey, key);
   }
 
   if (building.type === 'receiver') {
@@ -117,10 +133,22 @@ export function placeBuilding(world: WorldState, building: Building): boolean {
 }
 
 /**
- * Remove a building from the world
+ * Remove a building from the world.
+ * If the given coordinates are a secondary cell, the anchor building is removed.
  */
 export function removeBuilding(world: WorldState, x: number, y: number): boolean {
-  return world.buildings.delete(gridKey(x, y));
+  let key = gridKey(x, y);
+  // If the target is a secondary cell, redirect to its anchor building
+  const anchorKey = world.buildingSecondary.get(key);
+  if (anchorKey !== undefined) key = anchorKey;
+  // Clean up any secondary cells pointing to this anchor
+  for (const [secKey, ak] of world.buildingSecondary) {
+    if (ak === key) {
+      world.buildingSecondary.delete(secKey);
+      break;
+    }
+  }
+  return world.buildings.delete(key);
 }
 
 let _itemIdCounter = 0;

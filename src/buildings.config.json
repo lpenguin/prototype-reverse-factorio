@@ -67,6 +67,18 @@
       "size": { "x": 1, "y": 1 },
       "wireConnectable": true,
       "iconPath": "/icons/lamp.svg"
+    },
+    {
+      "id": "splitter",
+      "name": "Splitter",
+      "type": "splitter",
+      "size": { "x": 1, "y": 2 },
+      "iconPath": "/icons/splitter.svg",
+      "ports": [
+        { "type": "input",  "x": -1, "y": 1, "direction": "W" },
+        { "type": "output", "x": 1,  "y": 0, "direction": "E" },
+        { "type": "output", "x": 1,  "y": 1, "direction": "E" }
+      ]
     }
   ]
 }

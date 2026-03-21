@@ -106,7 +106,7 @@ export interface ItemInstance {
 /**
  * Base building interface
  */
-export type BuildingType = 'emitter' | 'belt' | 'receiver' | 'scanner' | 'arm' | 'button' | 'lamp';
+export type BuildingType = 'emitter' | 'belt' | 'receiver' | 'scanner' | 'arm' | 'button' | 'lamp' | 'splitter';
 
 export interface BuildingDefinition {
   id: string;
@@ -167,7 +167,13 @@ export interface Lamp extends BaseBuilding {
   type: 'lamp';
 }
 
-export type Building = Emitter | Belt | Receiver | Scanner | Arm | Button | Lamp;
+export interface Splitter extends BaseBuilding {
+  type: 'splitter';
+  /** 0 = left was last used, 1 = right was last used (undefined = neither yet used). */
+  lastOutputSide?: 0 | 1;
+}
+
+export type Building = Emitter | Belt | Receiver | Scanner | Arm | Button | Lamp | Splitter;
 
 /**
  * Static objects on the map (e.g. garbage piles)
@@ -188,6 +194,11 @@ export interface WorldState {
   wireCells: Set<string>; // Key format: "x,y"
   signals: Map<string, boolean>; // Key format: building key
   staticObjects: Map<string, StaticObject>; // Key format: "x,y"
+  /**
+   * Maps secondary-cell key → anchor-cell key for multi-cell buildings.
+   * Blocks the secondary cell from hosting items or other buildings.
+   */
+  buildingSecondary: Map<string, string>;
   /** Global repository of available requests */
   requests: RequestDefinition[];
   playerMoney: number;
