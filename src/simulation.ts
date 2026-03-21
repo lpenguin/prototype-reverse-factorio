@@ -6,7 +6,7 @@
  *   real item at the emitter cell.  The item then participates in phases 1-3
  *   like any other item.
  *
- * Phase 1: Intent Generation (generateIntents)
+ * Phase 1: Intent Generation (generateMoveProposals → buildTickets)
  *   Every item declares an ordered list of desired destination cells ("intents").
  *
  *   - Item on a Belt:  intents = [belt_forward]
@@ -123,33 +123,31 @@ function generateNewItems(world: WorldState): void {
 // Phase 1: Intent Generation
 // ---------------------------------------------------------------------------
 
-/** A proposal from one building about where one source cell's item should go. */
-export interface IntentProposal {
-  priority: number; // higher priority → sorted earlier in the intents list
-  intent: string;   // destination grid key
+/** A raw move proposal emitted by a building handler. */
+export interface MoveProposal {
+  sourceKey: string; // grid key of the item's current cell
+  priority: number;  // higher priority → sorted earlier in the intents list
+  intent: string;    // destination grid key
 }
 
-/** Callback passed to BuildingHandler.generateIntents to register a move proposal. */
-export type AddProposal = (sourceKey: string, priority: number, intent: string) => void;
+function generateMoveProposals(world: WorldState): MoveProposal[] {
+  return Array.from(world.buildings.entries())
+    .flatMap(([key, building]) => 
+      handlers.get(building.type)?.generateIntents(world, building, key) ?? []
+  );
+}
 
-function generateIntents(world: WorldState): Ticket[] {
-  const tickets: Ticket[] = [];
-
-  // Collect per-source-cell proposals from all buildings in a single pass.
-  const proposals = new Map<string, IntentProposal[]>();
-  const addProposal: AddProposal = (sourceKey, priority, intent) => {
-    let list = proposals.get(sourceKey);
-    if (!list) { list = []; proposals.set(sourceKey, list); }
-    list.push({ priority, intent });
-  };
-
-  for (const [key, building] of world.buildings) {
-    const handler = handlers.get(building.type);
-    handler?.generateIntents(world, building, key, addProposal);
+function buildTickets(proposals: MoveProposal[], world: WorldState): Ticket[] {
+  // Group proposals by sourceKey, sort by priority descending, deduplicate intents.
+  const grouped = new Map<string, MoveProposal[]>();
+  for (const p of proposals) {
+    let list = grouped.get(p.sourceKey);
+    if (!list) { list = []; grouped.set(p.sourceKey, list); }
+    list.push(p);
   }
 
-  // Build tickets from proposal groups (sort by priority descending → intent order).
-  for (const [sourceKey, list] of proposals) {
+  const tickets: Ticket[] = [];
+  for (const [sourceKey, list] of grouped) {
     list.sort((a, b) => b.priority - a.priority);
     // Deduplicate intents (preserve order, drop later duplicates).
     const intents = list.map(p => p.intent).filter((v, i, arr) => arr.indexOf(v) === i);
@@ -162,7 +160,6 @@ function generateIntents(world: WorldState): Ticket[] {
       state: MoveState.UNRESOLVED,
     });
   }
-
   return tickets;
 }
 
@@ -465,8 +462,8 @@ function updateLastAccepted(world: WorldState, targetKey: string, sourceKey: str
 export abstract class BuildingHandler<T extends Building> {
   abstract accept(world: WorldState, building: T, item: ItemInstance): boolean;
 
-  generateIntents(_world: WorldState, _building: T, _key: string, _addProposal: AddProposal): void {
-    // default: no proposals
+  generateIntents(_world: WorldState, _building: T, _key: string): MoveProposal[] {
+    return [];
   }
 
   spawnItem(_world: WorldState, _building: T, _key: string): void {
@@ -490,39 +487,39 @@ class BeltHandler extends BuildingHandler<Belt> {
     return true;
   }
 
-  generateIntents(world: WorldState, belt: Belt, key: string, addProposal: AddProposal): void {
-    if (!world.items.has(key)) return;
+  generateIntents(world: WorldState, belt: Belt, key: string): MoveProposal[] {
+    if (!world.items.has(key)) return [];
     const { dx, dy } = getDirectionOffset(belt.direction);
-    addProposal(key, 0, gridKey(belt.x + dx, belt.y + dy));
+    return [{ sourceKey: key, priority: 0, intent: gridKey(belt.x + dx, belt.y + dy) }];
   }
 }
 
 class ArmHandler extends BuildingHandler<Arm> {
   accept() { return false; }
 
-  generateIntents(world: WorldState, arm: Arm, key: string, addProposal: AddProposal): void {
-    if (world.signals.get(key) !== true) return; // must be powered
+  generateIntents(world: WorldState, arm: Arm, key: string): MoveProposal[] {
+    if (world.signals.get(key) !== true) return []; // must be powered
     const { dx, dy } = getDirectionOffset(arm.direction);
     const inputKey  = gridKey(arm.x + dx, arm.y + dy); // cell IN FRONT (claw side)
     const outputKey = gridKey(arm.x - dx, arm.y - dy); // cell BEHIND
 
-    if (world.buildings.get(inputKey)?.type  !== 'belt') return;
-    if (world.buildings.get(outputKey)?.type !== 'belt') return;
-    if (!world.items.has(inputKey)) return;
+    if (world.buildings.get(inputKey)?.type  !== 'belt') return [];
+    if (world.buildings.get(outputKey)?.type !== 'belt') return [];
+    if (!world.items.has(inputKey)) return [];
 
     // Higher priority than the belt's own forward intent, so the arm jump
     // is tried first; belt forward becomes the fallback.
-    addProposal(inputKey, 1, outputKey);
+    return [{ sourceKey: inputKey, priority: 1, intent: outputKey }];
   }
 }
 
 class EmitterHandler extends BuildingHandler<Emitter> {
   accept() { return false; }
 
-  generateIntents(world: WorldState, emitter: Emitter, key: string, addProposal: AddProposal): void {
-    if (!world.items.has(key)) return;
+  generateIntents(world: WorldState, emitter: Emitter, key: string): MoveProposal[] {
+    if (!world.items.has(key)) return [];
     const { dx, dy } = getDirectionOffset(emitter.direction);
-    addProposal(key, 0, gridKey(emitter.x + dx, emitter.y + dy));
+    return [{ sourceKey: key, priority: 0, intent: gridKey(emitter.x + dx, emitter.y + dy) }];
   }
 
   spawnItem(world: WorldState, emitter: Emitter, key: string): void {
@@ -566,7 +563,7 @@ export function tickWorld(world: WorldState): void {
   world.tick++;
   propagateSignals(world);
   generateNewItems(world);
-  const tickets = generateIntents(world);
+  const tickets = buildTickets(generateMoveProposals(world), world);
   resolveIntents(tickets, world);
   executeTickets(tickets, world);
 }
