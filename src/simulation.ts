@@ -110,97 +110,78 @@ function cwPriority(arrivalDir: Direction, lastDir: Direction): number {
 // Phase 1: Intent Generation
 // ---------------------------------------------------------------------------
 
+/** A proposal from one building about where one source cell's item should go. */
+interface IntentProposal {
+  priority: number; // higher priority → sorted earlier in the intents list
+  intent: string;   // destination grid key
+}
+
 function generateIntents(world: WorldState): Ticket[] {
   const tickets: Ticket[] = [];
-  const ticketBySourceKey = new Map<string, Ticket>();
 
-  // --- Pass 1: base tickets for items on buildings ---
+  // Collect per-source-cell proposals from all buildings in a single pass.
+  const proposals = new Map<string, IntentProposal[]>();
+  const addProposal = (sourceKey: string, priority: number, intent: string) => {
+    let list = proposals.get(sourceKey);
+    if (!list) { list = []; proposals.set(sourceKey, list); }
+    list.push({ priority, intent });
+  };
 
   for (const [key, building] of world.buildings) {
-    if (building.type === 'emitter') {
-      const staticObj = world.staticObjects.get(key);
-      if (!staticObj || staticObj.type !== 'garbage' || staticObj.itemPool.length === 0) continue;
-      const { dx, dy } = getDirectionOffset(building.direction);
-      const targetKey = gridKey(building.x + dx, building.y + dy);
-      tickets.push({
-        id: `emitter:${key}`,
-        item: null,
-        sourceKey: key,
-        emitterKey: key,
-        intents: [targetKey],
-        intentIndex: 0,
-        state: MoveState.UNRESOLVED,
-      });
-      continue;
-    }
-
-    const item = world.items.get(key);
-    if (!item) continue;
+    if (building.type === 'emitter') continue; // handled separately below
 
     if (building.type === 'belt') {
+      if (!world.items.has(key)) continue;
       const belt = building as Belt;
       const { dx, dy } = getDirectionOffset(belt.direction);
-      const fwdKey = gridKey(belt.x + dx, belt.y + dy);
-      const ticket: Ticket = {
-        id: key,
-        item,
-        sourceKey: key,
-        intents: [fwdKey],
-        intentIndex: 0,
-        state: MoveState.UNRESOLVED,
-      };
-      tickets.push(ticket);
-      ticketBySourceKey.set(key, ticket);
+      addProposal(key, 0, gridKey(belt.x + dx, belt.y + dy));
+    } else if (building.type === 'arm') {
+      if (world.signals.get(key) !== true) continue; // must be powered
+      const arm = building as Arm;
+      const { dx, dy } = getDirectionOffset(arm.direction);
+      const inputKey  = gridKey(arm.x + dx, arm.y + dy); // cell IN FRONT (claw side)
+      const outputKey = gridKey(arm.x - dx, arm.y - dy); // cell BEHIND
+
+      if (world.buildings.get(inputKey)?.type  !== 'belt') continue;
+      if (world.buildings.get(outputKey)?.type !== 'belt') continue;
+      if (!world.items.has(inputKey)) continue;
+
+      // Higher priority than the belt's own forward intent, so the arm jump
+      // is tried first; belt forward becomes the fallback.
+      addProposal(inputKey, 1, outputKey);
     }
   }
 
-  // --- Pass 2: arm intent injection ---
-  //
-  // A powered arm grabs the item at its inputKey and jumps it directly to
-  // outputKey, bypassing normal belt flow. We either override an existing
-  // ticket for the input cell or create a new pull ticket.
+  // Build tickets from proposal groups (sort by priority descending → intent order).
+  for (const [sourceKey, list] of proposals) {
+    list.sort((a, b) => b.priority - a.priority);
+    // Deduplicate intents (preserve order, drop later duplicates).
+    const intents = list.map(p => p.intent).filter((v, i, arr) => arr.indexOf(v) === i);
+    tickets.push({
+      id: sourceKey,
+      item: world.items.get(sourceKey)!,
+      sourceKey,
+      intents,
+      intentIndex: 0,
+      state: MoveState.UNRESOLVED,
+    });
+  }
 
-  for (const [armKey, building] of world.buildings) {
-    if (building.type !== 'arm') continue;
-    if (world.signals.get(armKey) !== true) continue; // must be powered
-
-    const arm = building as Arm;
-    const { dx, dy } = getDirectionOffset(arm.direction);
-    const inputKey  = gridKey(arm.x + dx, arm.y + dy);   // cell IN FRONT of the arm (claw side)
-    const outputKey = gridKey(arm.x - dx, arm.y - dy);   // cell BEHIND the arm
-
-    const inputBuilding  = world.buildings.get(inputKey);
-    const outputBuilding = world.buildings.get(outputKey);
-    if (inputBuilding?.type !== 'belt')  continue;
-    if (outputBuilding?.type !== 'belt') continue;
-
-    const item = world.items.get(inputKey);
-    if (!item) continue;
-
-    // Compute the belt's own forward key so we can use it as a fallback intent.
-    // If the arm jump is blocked (output occupied), the item falls back to
-    // normal belt movement instead of freezing at the input cell.
-    const inputBelt = world.buildings.get(inputKey) as Belt;
-    const { dx: bdx, dy: bdy } = getDirectionOffset(inputBelt.direction);
-    const beltFwdKey = gridKey(inputBelt.x + bdx, inputBelt.y + bdy);
-
-    const existingTicket = ticketBySourceKey.get(inputKey);
-    if (existingTicket) {
-      // Jump to outputKey first; fall back to normal belt movement if blocked.
-      existingTicket.intents = [outputKey, beltFwdKey];
-      existingTicket.intentIndex = 0;
-    } else {
-      const armTicket: Ticket = {
-        id: inputKey,
-        item,
-        sourceKey: inputKey,
-        intents: [outputKey, beltFwdKey],
-        intentIndex: 0,
-        state: MoveState.UNRESOLVED,
-      };
-      tickets.push(armTicket);
-      ticketBySourceKey.set(inputKey, armTicket);
-    }
+  // Emitter tickets: virtual items with no item at the source cell.
+  for (const [key, building] of world.buildings) {
+    if (building.type !== 'emitter') continue;
+    const staticObj = world.staticObjects.get(key);
+    if (!staticObj || staticObj.type !== 'garbage' || staticObj.itemPool.length === 0) continue;
+    const { dx, dy } = getDirectionOffset(building.direction);
+    tickets.push({
+      id: `emitter:${key}`,
+      item: null,
+      sourceKey: key,
+      emitterKey: key,
+      intents: [gridKey(building.x + dx, building.y + dy)],
+      intentIndex: 0,
+      state: MoveState.UNRESOLVED,
+    });
   }
 
   return tickets;
