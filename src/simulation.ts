@@ -128,17 +128,15 @@ function generateIntents(world: WorldState): Ticket[] {
   };
 
   for (const [key, building] of world.buildings) {
-    if (building.type === 'emitter') continue; // handled separately below
+    const { dx, dy } = getDirectionOffset(building.direction);
 
     if (building.type === 'belt') {
       if (!world.items.has(key)) continue;
       const belt = building as Belt;
-      const { dx, dy } = getDirectionOffset(belt.direction);
       addProposal(key, 0, gridKey(belt.x + dx, belt.y + dy));
     } else if (building.type === 'arm') {
       if (world.signals.get(key) !== true) continue; // must be powered
       const arm = building as Arm;
-      const { dx, dy } = getDirectionOffset(arm.direction);
       const inputKey  = gridKey(arm.x + dx, arm.y + dy); // cell IN FRONT (claw side)
       const outputKey = gridKey(arm.x - dx, arm.y - dy); // cell BEHIND
 
@@ -149,6 +147,18 @@ function generateIntents(world: WorldState): Ticket[] {
       // Higher priority than the belt's own forward intent, so the arm jump
       // is tried first; belt forward becomes the fallback.
       addProposal(inputKey, 1, outputKey);
+    } else if (building.type === 'emitter') {
+      const staticObj = world.staticObjects.get(key);
+      if (!staticObj || staticObj.type !== 'garbage' || staticObj.itemPool.length === 0) continue;
+      tickets.push({
+        id: `emitter:${key}`,
+        item: null,
+        sourceKey: key,
+        emitterKey: key,
+        intents: [gridKey(building.x + dx, building.y + dy)],
+        intentIndex: 0,
+        state: MoveState.UNRESOLVED,
+      });
     }
   }
 
@@ -162,23 +172,6 @@ function generateIntents(world: WorldState): Ticket[] {
       item: world.items.get(sourceKey)!,
       sourceKey,
       intents,
-      intentIndex: 0,
-      state: MoveState.UNRESOLVED,
-    });
-  }
-
-  // Emitter tickets: virtual items with no item at the source cell.
-  for (const [key, building] of world.buildings) {
-    if (building.type !== 'emitter') continue;
-    const staticObj = world.staticObjects.get(key);
-    if (!staticObj || staticObj.type !== 'garbage' || staticObj.itemPool.length === 0) continue;
-    const { dx, dy } = getDirectionOffset(building.direction);
-    tickets.push({
-      id: `emitter:${key}`,
-      item: null,
-      sourceKey: key,
-      emitterKey: key,
-      intents: [gridKey(building.x + dx, building.y + dy)],
       intentIndex: 0,
       state: MoveState.UNRESOLVED,
     });
