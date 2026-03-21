@@ -114,16 +114,8 @@ function cwPriority(arrivalDir: Direction, lastDir: Direction): number {
 
 function generateNewItems(world: WorldState): void {
   for (const [key, building] of world.buildings) {
-    if (building.type !== 'emitter') continue;
-    if (world.items.has(key)) continue; // already holding an item
-    const staticObj = world.staticObjects.get(key);
-    if (!staticObj || staticObj.type !== 'garbage' || staticObj.itemPool.length === 0) continue;
-    const itemDefId = staticObj.itemPool[Math.floor(Math.random() * staticObj.itemPool.length)];
-    world.items.set(key, {
-      id: nextItemId(), defId: itemDefId,
-      x: building.x, y: building.y,
-      renderX: building.x, renderY: building.y, renderScale: 0,
-    });
+    const handler = handlers.get(building.type);
+    handler?.spawnItem(world, building, key);
   }
 }
 
@@ -132,46 +124,28 @@ function generateNewItems(world: WorldState): void {
 // ---------------------------------------------------------------------------
 
 /** A proposal from one building about where one source cell's item should go. */
-interface IntentProposal {
+export interface IntentProposal {
   priority: number; // higher priority → sorted earlier in the intents list
   intent: string;   // destination grid key
 }
+
+/** Callback passed to BuildingHandler.generateIntents to register a move proposal. */
+export type AddProposal = (sourceKey: string, priority: number, intent: string) => void;
 
 function generateIntents(world: WorldState): Ticket[] {
   const tickets: Ticket[] = [];
 
   // Collect per-source-cell proposals from all buildings in a single pass.
   const proposals = new Map<string, IntentProposal[]>();
-  const addProposal = (sourceKey: string, priority: number, intent: string) => {
+  const addProposal: AddProposal = (sourceKey, priority, intent) => {
     let list = proposals.get(sourceKey);
     if (!list) { list = []; proposals.set(sourceKey, list); }
     list.push({ priority, intent });
   };
 
   for (const [key, building] of world.buildings) {
-    const { dx, dy } = getDirectionOffset(building.direction);
-
-    if (building.type === 'belt') {
-      if (!world.items.has(key)) continue;
-      const belt = building as Belt;
-      addProposal(key, 0, gridKey(belt.x + dx, belt.y + dy));
-    } else if (building.type === 'arm') {
-      if (world.signals.get(key) !== true) continue; // must be powered
-      const arm = building as Arm;
-      const inputKey  = gridKey(arm.x + dx, arm.y + dy); // cell IN FRONT (claw side)
-      const outputKey = gridKey(arm.x - dx, arm.y - dy); // cell BEHIND
-
-      if (world.buildings.get(inputKey)?.type  !== 'belt') continue;
-      if (world.buildings.get(outputKey)?.type !== 'belt') continue;
-      if (!world.items.has(inputKey)) continue;
-
-      // Higher priority than the belt's own forward intent, so the arm jump
-      // is tried first; belt forward becomes the fallback.
-      addProposal(inputKey, 1, outputKey);
-    } else if (building.type === 'emitter') {
-      if (!world.items.has(key)) continue;
-      addProposal(key, 0, gridKey(building.x + dx, building.y + dy));
-    }
+    const handler = handlers.get(building.type);
+    handler?.generateIntents(world, building, key, addProposal);
   }
 
   // Build tickets from proposal groups (sort by priority descending → intent order).
@@ -485,11 +459,19 @@ function updateLastAccepted(world: WorldState, targetKey: string, sourceKey: str
 }
 
 // ---------------------------------------------------------------------------
-// Building handlers (kept for legacy compat and receiver accept())
+// Building handlers
 // ---------------------------------------------------------------------------
 
-abstract class BuildingHandler<T extends Building> {
+export abstract class BuildingHandler<T extends Building> {
   abstract accept(world: WorldState, building: T, item: ItemInstance): boolean;
+
+  generateIntents(_world: WorldState, _building: T, _key: string, _addProposal: AddProposal): void {
+    // default: no proposals
+  }
+
+  spawnItem(_world: WorldState, _building: T, _key: string): void {
+    // default: no spawning
+  }
 }
 
 class ReceiverHandler extends BuildingHandler<Receiver> {
@@ -507,20 +489,63 @@ class BeltHandler extends BuildingHandler<Belt> {
     world.items.set(key, item);
     return true;
   }
+
+  generateIntents(world: WorldState, belt: Belt, key: string, addProposal: AddProposal): void {
+    if (!world.items.has(key)) return;
+    const { dx, dy } = getDirectionOffset(belt.direction);
+    addProposal(key, 0, gridKey(belt.x + dx, belt.y + dy));
+  }
+}
+
+class ArmHandler extends BuildingHandler<Arm> {
+  accept() { return false; }
+
+  generateIntents(world: WorldState, arm: Arm, key: string, addProposal: AddProposal): void {
+    if (world.signals.get(key) !== true) return; // must be powered
+    const { dx, dy } = getDirectionOffset(arm.direction);
+    const inputKey  = gridKey(arm.x + dx, arm.y + dy); // cell IN FRONT (claw side)
+    const outputKey = gridKey(arm.x - dx, arm.y - dy); // cell BEHIND
+
+    if (world.buildings.get(inputKey)?.type  !== 'belt') return;
+    if (world.buildings.get(outputKey)?.type !== 'belt') return;
+    if (!world.items.has(inputKey)) return;
+
+    // Higher priority than the belt's own forward intent, so the arm jump
+    // is tried first; belt forward becomes the fallback.
+    addProposal(inputKey, 1, outputKey);
+  }
+}
+
+class EmitterHandler extends BuildingHandler<Emitter> {
+  accept() { return false; }
+
+  generateIntents(world: WorldState, emitter: Emitter, key: string, addProposal: AddProposal): void {
+    if (!world.items.has(key)) return;
+    const { dx, dy } = getDirectionOffset(emitter.direction);
+    addProposal(key, 0, gridKey(emitter.x + dx, emitter.y + dy));
+  }
+
+  spawnItem(world: WorldState, emitter: Emitter, key: string): void {
+    if (world.items.has(key)) return; // already holding an item
+    const staticObj = world.staticObjects.get(key);
+    if (!staticObj || staticObj.type !== 'garbage' || staticObj.itemPool.length === 0) return;
+    const itemDefId = staticObj.itemPool[Math.floor(Math.random() * staticObj.itemPool.length)];
+    world.items.set(key, {
+      id: nextItemId(), defId: itemDefId,
+      x: emitter.x, y: emitter.y,
+      renderX: emitter.x, renderY: emitter.y, renderScale: 0,
+    });
+  }
 }
 
 const handlers = new Map<BuildingType, BuildingHandler<Building>>([
-  ['emitter',  new (class extends BuildingHandler<Emitter> {
-    accept() { return false; }
-  })()],
+  ['emitter',  new EmitterHandler()],
   ['belt',     new BeltHandler()],
   ['receiver', new ReceiverHandler()],
   ['scanner',  new (class extends BuildingHandler<Scanner> {
     accept() { return false; }
   })()],
-  ['arm',      new (class extends BuildingHandler<Arm> {
-    accept() { return false; }
-  })()],
+  ['arm',      new ArmHandler()],
   ['button',   new (class extends BuildingHandler<Button> {
     accept() { return false; }
   })()],
