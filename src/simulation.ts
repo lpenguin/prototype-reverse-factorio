@@ -6,14 +6,8 @@
  *   desired destination cells ("intents").
  *
  *   - Item on a Belt:  intents = [belt_forward]
- *     Special case: if a Sorter claims this cell as its input cell AND the
- *     item matches the sorter's filter, prepend the sorter cell as primary
- *     intent (overflow = original belt_forward direction).  If the item does
- *     NOT match, and the belt happens to point into the sorter cell, redirect
- *     the intent to the sorter's output (skip the sorter cell).
- *   - Item on a Sorter cell: intents = [sorter_output]
- *   - Item on a bare cell claimed by a Sorter's input: if item matches, the
- *     sorter generates a ticket on behalf of that item: intents = [sorterKey].
+ *     Special case: if a powered Arm targets this cell, the arm intent
+ *     (outputKey) is prepended as the primary intent (belt_forward = fallback).
  *   - Virtual Emitter item: intents = [emitter_forward]
  *
  * Phase 2: Iterative Resolution
@@ -34,7 +28,6 @@ import type {
   BuildingType,
   ItemInstance,
   Direction,
-  Sorter,
   Belt,
   Receiver,
   Emitter,
@@ -52,7 +45,7 @@ import { gridKey, getDirectionOffset, nextItemId } from './world.ts';
 // ---------------------------------------------------------------------------
 
 interface Ticket {
-  /** Stable key.  Real items: "x,y".  Virtual emitters: "emitter:x,y".  Sorter-pull: "pull:x,y". */
+  /** Stable key.  Real items: "x,y".  Virtual emitters: "emitter:x,y". */
   id: string;
   /** Null for virtual emitter tickets. */
   item: ItemInstance | null;
@@ -69,10 +62,10 @@ interface Ticket {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: sorter filter check (exported for tests)
+// Helper: scanner/arm filter check
 // ---------------------------------------------------------------------------
 
-export function itemMatchesFilter(
+function itemMatchesFilter(
   item: ItemInstance,
   filterProperty?: string,
   filterValue?: string,
@@ -119,7 +112,6 @@ function cwPriority(arrivalDir: Direction, lastDir: Direction): number {
 
 function generateIntents(world: WorldState): Ticket[] {
   const tickets: Ticket[] = [];
-  // sourceKey → ticket for real item-driven tickets (for sorter intent injection)
   const ticketBySourceKey = new Map<string, Ticket>();
 
   // --- Pass 1: base tickets for items on buildings ---
@@ -159,76 +151,10 @@ function generateIntents(world: WorldState): Ticket[] {
       };
       tickets.push(ticket);
       ticketBySourceKey.set(key, ticket);
-    } else if (building.type === 'sorter') {
-      const sorter = building as Sorter;
-      const { dx, dy } = getDirectionOffset(sorter.direction);
-      const outKey = gridKey(sorter.x + dx, sorter.y + dy);
-      const ticket: Ticket = {
-        id: key,
-        item,
-        sourceKey: key,
-        intents: [outKey],
-        intentIndex: 0,
-        state: MoveState.UNRESOLVED,
-      };
-      tickets.push(ticket);
-      ticketBySourceKey.set(key, ticket);
-    } else if (building.type === 'arm') {
-      // Handled in Pass 2 alongside signal check.
     }
   }
 
-  // --- Pass 2: sorter intent injection, then arm intent injection ---
-
-  for (const [, building] of world.buildings) {
-    if (building.type !== 'sorter') continue;
-    const sorter = building as Sorter;
-
-    const { dx, dy } = getDirectionOffset(sorter.direction);
-    const inputKey  = gridKey(sorter.x - dx, sorter.y - dy);
-    const sorterKey = gridKey(sorter.x, sorter.y);
-    const sorterOutKey = gridKey(sorter.x + dx, sorter.y + dy);
-
-    const item = world.items.get(inputKey);
-    if (!item) continue;
-
-    const matches = itemMatchesFilter(item, sorter.filterProperty, sorter.filterValue);
-    const existingTicket = ticketBySourceKey.get(inputKey);
-
-    if (matches) {
-      if (existingTicket) {
-        // Inject sorter cell as primary intent, keep current intent as overflow
-        if (existingTicket.intents[0] === sorterKey) {
-          // Belt already points at sorter: add overflow = sorter's output
-          existingTicket.intents = [sorterKey, sorterOutKey];
-        } else {
-          // Side-pull: sorter is perpendicular — inject sorter as top priority
-          existingTicket.intents = [sorterKey, ...existingTicket.intents];
-        }
-      } else {
-        // No belt ticket — sorter generates a pull ticket for this item
-        const pullTicket: Ticket = {
-          id: `pull:${inputKey}`,
-          item,
-          sourceKey: inputKey,
-          intents: [sorterKey],
-          intentIndex: 0,
-          state: MoveState.UNRESOLVED,
-        };
-        tickets.push(pullTicket);
-        ticketBySourceKey.set(inputKey, pullTicket);
-      }
-    } else {
-      // Item does NOT match.
-      if (existingTicket && existingTicket.intents[0] === sorterKey) {
-        // Belt points into the sorter but item doesn't match → redirect past it
-        existingTicket.intents = [sorterOutKey];
-      }
-      // If no existing ticket or belt doesn't point at sorter, leave as-is.
-    }
-  }
-
-  // --- Pass 2b: arm intent injection ---
+  // --- Pass 2: arm intent injection ---
   //
   // A powered arm grabs the item at its inputKey and jumps it directly to
   // outputKey, bypassing normal belt flow. We either override an existing
@@ -282,7 +208,7 @@ function generateIntents(world: WorldState): Ticket[] {
 
 function canHoldItems(building?: Building): boolean {
   if (!building) return true;
-  return building.type === 'belt' || building.type === 'sorter' || building.type === 'receiver';
+  return building.type === 'belt' || building.type === 'receiver';
 }
 
 // ---------------------------------------------------------------------------
@@ -622,24 +548,12 @@ class BeltHandler extends BuildingHandler<Belt> {
   }
 }
 
-class SorterHandler extends BuildingHandler<Sorter> {
-  accept(world: WorldState, sorter: Sorter, item: ItemInstance): boolean {
-    const key = gridKey(sorter.x, sorter.y);
-    if (world.items.has(key)) return false;
-    if (!itemMatchesFilter(item, sorter.filterProperty, sorter.filterValue)) return false;
-    item.x = sorter.x; item.y = sorter.y;
-    world.items.set(key, item);
-    return true;
-  }
-}
-
 const handlers = new Map<BuildingType, BuildingHandler<Building>>([
   ['emitter',  new (class extends BuildingHandler<Emitter> {
     accept() { return false; }
   })()],
   ['belt',     new BeltHandler()],
   ['receiver', new ReceiverHandler()],
-  ['sorter',   new SorterHandler()],
   ['scanner',  new (class extends BuildingHandler<Scanner> {
     accept() { return false; }
   })()],
@@ -673,13 +587,6 @@ export function tickWorld(world: WorldState): void {
 // ---------------------------------------------------------------------------
 // Legacy exports (backward-compat)
 // ---------------------------------------------------------------------------
-
-export const sorterHandler = {
-  itemMatchesFilter: (
-    item: ItemInstance,
-    sorter: { filterProperty?: string; filterValue?: string },
-  ) => itemMatchesFilter(item, sorter.filterProperty, sorter.filterValue),
-};
 
 export interface TickContext { movedItems: Set<string>; }
 

@@ -1,4 +1,4 @@
-import type { ViewState, WorldState, ItemInstance, Building, Receiver, Sorter, StaticObject, Button } from './types.ts';
+import type { ViewState, WorldState, ItemInstance, Building, Receiver, StaticObject, Button } from './types.ts';
 import { CELL_SIZE } from './types.ts';
 import * as TWEEN from '@tweenjs/tween.js';
 import { SceneNode, GroupNode, SpriteNode, ShapeNode, TextNode, LineNode, InlineSvgNode } from './scene.ts';
@@ -179,12 +179,6 @@ export class WorldRenderer {
     let needsRebuild = false;
 
     if (state.rotation !== rotation) needsRebuild = true;
-    if (building.type === 'sorter') {
-      const sorter = building as Sorter;
-      if (state.filterProp !== sorter.filterProperty || state.filterVal !== sorter.filterValue) {
-        needsRebuild = true;
-      }
-    }
     if (building.type === 'receiver') {
       const receiver = building as Receiver;
       if (state.requestName !== receiver.request.name) {
@@ -262,49 +256,6 @@ export class WorldRenderer {
       icon.imgPivotY = centerY;
       group.addChild(icon);
       state.icon = icon;
-    }
-
-    // Sorter overlay
-    if (building.type === 'sorter') {
-      const sorter = building as Sorter;
-
-      const inPort = new ShapeNode('polygon');
-      inPort.points = `${centerX - 6},${y + 2} ${centerX + 6},${y + 2} ${centerX},${y + 10}`;
-      inPort.fill = '#ff9900';
-      inPort.x = 0;
-      inPort.y = 0;
-      inPort.rotation = rotation + 180;
-      inPort.pivotX = centerX;
-      inPort.pivotY = centerY;
-      inPort.opacity = 0.85;
-      group.addChild(inPort);
-
-      const outPort = new ShapeNode('polygon');
-      outPort.points = `${centerX - 6},${y + 2} ${centerX + 6},${y + 2} ${centerX},${y + 10}`;
-      outPort.fill = '#44ff88';
-      outPort.x = 0;
-      outPort.y = 0;
-      outPort.rotation = rotation;
-      outPort.pivotX = centerX;
-      outPort.pivotY = centerY;
-      outPort.opacity = 0.85;
-      group.addChild(outPort);
-
-      const label = new TextNode();
-      label.textX = centerX;
-      label.textY = y + CELL_SIZE - 2;
-      label.textAnchor = 'middle';
-      label.fontSize = '9';
-      label.fontFamily = 'sans-serif';
-      label.fill = sorter.filterProperty ? '#ffffff' : '#ffcc44';
-      label.stroke = '#000';
-      label.strokeWidth = 2;
-      label.paintOrder = 'stroke';
-      label.text = sorter.filterProperty ? `${sorter.filterProperty}:${sorter.filterValue}` : 'any';
-      group.addChild(label);
-
-      state.filterProp = sorter.filterProperty;
-      state.filterVal = sorter.filterValue;
     }
 
     // Receiver overlay

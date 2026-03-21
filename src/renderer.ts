@@ -1,4 +1,4 @@
-import type { ViewState, WorldState, Receiver, Sorter, Scanner, RequestDefinition } from './types.ts';
+import type { ViewState, WorldState, Receiver, Scanner, RequestDefinition } from './types.ts';
 import { propertyRegistry, requestRegistry } from './registry.ts';
 import { gridKey } from './world.ts';
 
@@ -83,13 +83,6 @@ function createRequestCard(req: RequestDefinition): HTMLElement {
 export function updateHUD(world: WorldState): void {
   const hud = document.querySelector('#hud');
   if (hud) hud.textContent = `Money: $${world.playerMoney} | Tick: ${world.tick}`;
-}
-
-/**
- * Open the sorter configuration dialog
- */
-export function openSorterDialog(sorter: Sorter, onClose?: () => void): void {
-  openFilterDialog('Sorter Filter', sorter, onClose);
 }
 
 /**

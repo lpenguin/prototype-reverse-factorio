@@ -1,6 +1,6 @@
-import type { ViewState, WorldState, Direction, Building, ItemInstance, Sorter, Receiver, Scanner } from './types.ts';
+import type { ViewState, WorldState, Direction, Building, ItemInstance, Receiver, Scanner } from './types.ts';
 import { CELL_SIZE } from './types.ts';
-import { updateTransform, updateRequestPopup, openSorterDialog, openScannerDialog, openReceiverDialog, renderRequestRepository } from './renderer.ts';
+import { updateTransform, updateRequestPopup, openScannerDialog, openReceiverDialog, renderRequestRepository } from './renderer.ts';
 import { addWireCells, getOrthogonalDragCells, placeBuilding, gridKey, removeItem, removeBuilding } from './world.ts';
 import { buildingsRegistry as registry, requestRegistry } from './registry.ts';
 import { getHandler } from './simulation.ts';
@@ -122,13 +122,11 @@ export function setupInput(
       } else if (viewState.selectedBuildingId) {
         tryPlace(coords);
       } else {
-        // No tool selected — check if we clicked a sorter or receiver to open its dialog
+        // No tool selected — check if we clicked a scanner/receiver/button to open its dialog
         const clickedBuilding = world.buildings.get(gridKey(coords.x, coords.y));
         if (clickedBuilding?.type === 'button') {
           clickedBuilding.isOn = !clickedBuilding.isOn;
           updateDisplay();
-        } else if (clickedBuilding?.type === 'sorter') {
-          openSorterDialog(clickedBuilding as Sorter, () => updateDisplay());
         } else if (clickedBuilding?.type === 'scanner') {
           openScannerDialog(clickedBuilding as Scanner, () => updateDisplay());
         } else if (clickedBuilding?.type === 'receiver') {

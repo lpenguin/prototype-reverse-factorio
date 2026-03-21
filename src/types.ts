@@ -106,7 +106,7 @@ export interface ItemInstance {
 /**
  * Base building interface
  */
-export type BuildingType = 'emitter' | 'belt' | 'receiver' | 'sorter' | 'scanner' | 'arm' | 'button' | 'lamp';
+export type BuildingType = 'emitter' | 'belt' | 'receiver' | 'scanner' | 'arm' | 'button' | 'lamp';
 
 export interface BuildingDefinition {
   id: string;
@@ -148,16 +148,6 @@ export interface Receiver extends BaseBuilding {
   lastInputIndex?: number;
 }
 
-export interface Sorter extends BaseBuilding {
-  type: 'sorter';
-  /** The property id to filter on (e.g. 'color') */
-  filterProperty?: string;
-  /** The property value to match (e.g. 'red') */
-  filterValue?: string;
-  /** Round-robin index for the input side (same pattern as Belt/Receiver) */
-  lastInputIndex?: number;
-}
-
 export interface Scanner extends BaseBuilding {
   type: 'scanner';
   filterProperty?: string;
@@ -177,7 +167,7 @@ export interface Lamp extends BaseBuilding {
   type: 'lamp';
 }
 
-export type Building = Emitter | Belt | Receiver | Sorter | Scanner | Arm | Button | Lamp;
+export type Building = Emitter | Belt | Receiver | Scanner | Arm | Button | Lamp;
 
 /**
  * Static objects on the map (e.g. garbage piles)
