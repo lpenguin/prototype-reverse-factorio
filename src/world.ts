@@ -1,6 +1,6 @@
-import type { WorldState, Building, ItemInstance, StaticObject, Receiver } from './types.ts';
+import type { WorldState, Building, ItemInstance, Receiver } from './types.ts';
 import { Direction } from './types.ts';
-import { mapRegistry, buildingsRegistry, requestRegistry, itemRegistry } from './registry.ts';
+import { buildingsRegistry, requestRegistry, itemRegistry } from './registry.ts';
 
 /**
  * Convert grid coordinates to a consistent string key
@@ -31,7 +31,6 @@ export function createWorld(): WorldState {
     items: new Map(),
     wireCells: new Set(),
     signals: new Map(),
-    staticObjects: new Map(),
     buildingSecondary: new Map(),
     requests: [], // Start with an empty repository
     playerMoney: 0,
@@ -44,50 +43,7 @@ export function createWorld(): WorldState {
     world.requests.push(requestRegistry.generateRandomRequest());
   }
 
-  generateGarbage(world);
-
   return world;
-}
-
-/**
- * Generate garbage piles based on map configuration
- */
-function generateGarbage(world: WorldState) {
-  const { garbageRect, density, minSize, maxSize } = mapRegistry;
-  const area = (garbageRect.x2 - garbageRect.x1) * (garbageRect.y2 - garbageRect.y1);
-  const averageSize = ((minSize ?? 5) + (maxSize ?? 15)) / 2;
-  const numPiles = Math.floor(area * density / averageSize);
-
-  for (let i = 0; i < numPiles; i++) {
-    const startX = Math.floor(Math.random() * (garbageRect.x2 - garbageRect.x1)) + garbageRect.x1;
-    const startY = Math.floor(Math.random() * (garbageRect.y2 - garbageRect.y1)) + garbageRect.y1;
-    
-    // Grow a blob
-    const pileSize = Math.floor(Math.random() * ((maxSize ?? 15) - (minSize ?? 5) + 1)) + (minSize ?? 5);
-    const queue: Array<{x: number, y: number}> = [{x: startX, y: startY}];
-    const visited = new Set<string>();
-    
-    let added = 0;
-    while (queue.length > 0 && added < pileSize) {
-      const {x, y} = queue.shift()!;
-      const key = gridKey(x, y);
-      
-      if (visited.has(key)) continue;
-      visited.add(key);
-      
-      if (!world.staticObjects.has(key)) {
-        world.staticObjects.set(key, { type: 'garbage', x, y, itemPool: mapRegistry.itemPool } as StaticObject);
-        added++;
-        
-        // Add neighbors to queue in random order
-        const neighbors = [
-          {x: x + 1, y}, {x: x - 1, y}, {x, y: y + 1}, {x, y: y - 1}
-        ].sort(() => Math.random() - 0.5);
-        
-        queue.push(...neighbors);
-      }
-    }
-  }
 }
 
 /**
@@ -105,14 +61,7 @@ export function placeBuilding(world: WorldState, building: Building): boolean {
   const key = gridKey(building.x, building.y);
   if (isCellOccupied(world, key)) return false;
 
-  // Check preferred static types
   const def = buildingsRegistry.getAllBuildings().find(d => d.type === building.type);
-  if (def?.preferredStaticTypes && def.preferredStaticTypes.length > 0) {
-    const staticObj = world.staticObjects.get(key);
-    if (!staticObj || !def.preferredStaticTypes.includes(staticObj.type)) {
-      return false;
-    }
-  }
 
   // For multi-cell buildings, reserve the secondary (perpendicular-right) cell
   if (def && (def.size.x > 1 || def.size.y > 1)) {
@@ -166,6 +115,7 @@ export function addItem(world: WorldState, item: Omit<ItemInstance, 'id'> & { id
   const itemDef = itemRegistry.getItem(item.defId);
   if (!item.shape) item.shape = typeof itemDef?.properties.shape === 'string' ? itemDef.properties.shape : undefined;
   if (!item.color) item.color = typeof itemDef?.properties.color === 'string' ? itemDef.properties.color : undefined;
+  if (!item.size) item.size = typeof itemDef?.properties.size === 'string' ? itemDef.properties.size : undefined;
   if (!item.id) (item as ItemInstance).id = nextItemId();
   if (item.renderX == null) (item as ItemInstance).renderX = item.x;
   if (item.renderY == null) (item as ItemInstance).renderY = item.y;

@@ -34,15 +34,15 @@ describe('World Logic', () => {
 
   it('should place emitter on an empty tile without garbage', () => {
     const world = createWorld();
-    world.staticObjects.clear();
 
     const emitter = {
       type: 'emitter' as const,
       x: 3,
       y: 4,
       direction: Direction.E,
-      sequence: [{ shape: 'circle' as const, color: 'red' as const }],
+      sequence: [{ shape: 'circle' as const, color: 'red' as const, size: 'medium' as const }],
       nextSequenceIndex: 0,
+      loop: true,
     };
     expect(placeBuilding(world, emitter)).toBe(true);
     expect(world.buildings.get(gridKey(3, 4))?.type).toBe('emitter');
@@ -50,7 +50,6 @@ describe('World Logic', () => {
 
   it('should not place emitter on an occupied tile', () => {
     const world = createWorld();
-    world.staticObjects.clear();
 
     placeBuilding(world, { type: 'belt', x: 8, y: 2, direction: Direction.E });
     const emitter = {
@@ -58,8 +57,9 @@ describe('World Logic', () => {
       x: 8,
       y: 2,
       direction: Direction.E,
-      sequence: [{ shape: 'circle' as const, color: 'red' as const }],
+      sequence: [{ shape: 'circle' as const, color: 'red' as const, size: 'medium' as const }],
       nextSequenceIndex: 0,
+      loop: true,
     };
 
     expect(placeBuilding(world, emitter)).toBe(false);

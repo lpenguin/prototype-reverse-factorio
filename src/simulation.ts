@@ -81,6 +81,7 @@ function itemMatchesFilter(
 function getEffectiveItemProperty(item: ItemInstance, property: string): string | number | undefined {
   if (property === 'shape' && item.shape) return item.shape;
   if (property === 'color' && item.color) return item.color;
+  if (property === 'size' && item.size) return item.size;
   const itemDef = itemRegistry.getItem(item.defId);
   if (!itemDef) return undefined;
   return itemDef.properties[property];
@@ -540,15 +541,21 @@ class EmitterHandler extends BuildingHandler<Emitter> {
   spawnItem(world: WorldState, emitter: Emitter, key: string): void {
     if (world.items.has(key)) return; // already holding an item
     if (emitter.sequence.length === 0) return;
+
+    if (!emitter.loop && emitter.nextSequenceIndex >= emitter.sequence.length) return;
+
     const index = emitter.nextSequenceIndex % emitter.sequence.length;
     const seqItem = emitter.sequence[index];
-    emitter.nextSequenceIndex = (index + 1) % emitter.sequence.length;
+    emitter.nextSequenceIndex = emitter.loop
+      ? (index + 1) % emitter.sequence.length
+      : index + 1;
 
     world.items.set(key, {
       id: nextItemId(),
       defId: EmitterHandler.DEFAULT_DEF_ID,
       shape: seqItem.shape,
       color: seqItem.color,
+      size: seqItem.size,
       x: emitter.x, y: emitter.y,
       renderX: emitter.x, renderY: emitter.y, renderScale: 0,
     });

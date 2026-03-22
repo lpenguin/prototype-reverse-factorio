@@ -1,4 +1,4 @@
-import type { ViewState, WorldState, ItemInstance, Building, StaticObject } from './types.ts';
+import type { ViewState, WorldState, ItemInstance, Building } from './types.ts';
 import { CELL_SIZE } from './types.ts';
 import type { SceneNode } from './scene.ts';
 import { GroupNode, SpriteNode, ShapeNode, LineNode } from './scene.ts';
@@ -29,51 +29,8 @@ export class WorldRenderer {
     worldGroup: SVGGElement,
     gridGroup: SVGGElement,
   ) {
-    this.scene = new SceneManager(worldGroup, ['static', 'wires', 'buildings', 'items', 'preview']);
+    this.scene = new SceneManager(worldGroup, ['wires', 'buildings', 'items', 'preview']);
     this._gridGroup = gridGroup;
-  }
-
-  // ── Static objects (garbage) ──────────────────────────────────────
-
-  syncStaticObjects(world: WorldState): void {
-    this.scene.diffMap<StaticObject>(
-      'static',
-      world.staticObjects,
-      (_key, obj) => this._createGarbageNode(obj),
-      () => {}, // static objects never change
-    );
-  }
-
-  private _createGarbageNode(obj: StaticObject): SceneNode {
-    const group = new GroupNode();
-    const x = obj.x * CELL_SIZE;
-    const y = obj.y * CELL_SIZE;
-
-    const rect = new ShapeNode('rect');
-    rect.setRect(x, y, CELL_SIZE, CELL_SIZE);
-    rect.fill = '#a5a5a5';
-    rect.fillOpacity = 0.4;
-    group.addChild(rect);
-
-    // Deterministic decorative lines
-    const seed = (obj.x * 374761393 + obj.y * 668265263) ^ 0x9e3779b9;
-    const pseudoRandom = (s: number) => {
-      const val = Math.sin(s) * 10000;
-      return val - Math.floor(val);
-    };
-
-    for (let i = 0; i < 4; i++) {
-      const line = new LineNode();
-      line.x1 = x + pseudoRandom(seed + i * 10) * CELL_SIZE;
-      line.y1 = y + pseudoRandom(seed + i * 10 + 1) * CELL_SIZE;
-      line.x2 = x + pseudoRandom(seed + i * 10 + 2) * CELL_SIZE;
-      line.y2 = y + pseudoRandom(seed + i * 10 + 3) * CELL_SIZE;
-      line.lineStroke = '#666';
-      line.lineStrokeWidth = 1.5;
-      group.addChild(line);
-    }
-
-    return group;
   }
 
   // ── Buildings ─────────────────────────────────────────────────────
@@ -232,7 +189,7 @@ export class WorldRenderer {
   private _createItemNode(item: ItemInstance): SceneNode {
     const def = itemRegistry.getItem(item.defId);
     const props = def?.properties ?? {};
-    const sizeKey = typeof props.size === 'string' ? props.size : '';
+    const sizeKey = item.size ?? (typeof props.size === 'string' ? props.size : 'medium');
     const shapeKey = item.shape ?? (typeof props.shape === 'string' ? props.shape : 'circle');
     const colorKey = item.color ?? (typeof props.color === 'string' ? props.color : 'red');
 
@@ -337,14 +294,7 @@ export class WorldRenderer {
       isSecondaryOccupied = world.buildings.has(secondaryKey) || world.buildingSecondary.has(secondaryKey);
     }
 
-    let isInvalidStatic = false;
-    if (def?.preferredStaticTypes && def.preferredStaticTypes.length > 0) {
-      const staticObj = world.staticObjects.get(key);
-      if (!staticObj || !def.preferredStaticTypes.includes(staticObj.type)) {
-        isInvalidStatic = true;
-      }
-    }
-    const isInvalid = isOccupied || isSecondaryOccupied || isInvalidStatic;
+    const isInvalid = isOccupied || isSecondaryOccupied;
 
     let color: string, strokeColor: string;
     if (isErase) {
@@ -499,7 +449,6 @@ export class WorldRenderer {
   // ── Top-level sync ────────────────────────────────────────────────
 
   syncAll(world: WorldState, view: ViewState, dyingItems?: Map<string, ItemInstance>): void {
-    this.syncStaticObjects(world);
     this.syncWires(world);
     this.syncBuildings(world);
     this.syncItems(world, dyingItems);

@@ -6,7 +6,7 @@ import { buildingsRegistry as registry, requestRegistry } from './registry.ts';
 import { getHandler } from './simulation.ts';
 import type { WorldRenderer } from './world-renderer.ts';
 
-const DEFAULT_EMITTER_SEQUENCE = [{ shape: 'circle', color: 'red' }] as const;
+const DEFAULT_EMITTER_SEQUENCE = [{ shape: 'circle', color: 'red', size: 'medium' }] as const;
 
 export function setupInput(
   svgElement: SVGSVGElement,
@@ -60,6 +60,7 @@ export function setupInput(
           direction: viewState.selectedDirection,
           sequence: DEFAULT_EMITTER_SEQUENCE.map(item => ({ ...item })),
           nextSequenceIndex: 0,
+          loop: true,
         }
       : {
           type: def.type,

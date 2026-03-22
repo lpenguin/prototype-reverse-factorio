@@ -100,6 +100,8 @@ export interface ItemInstance {
   shape?: string;
   /** Runtime-assigned color key (e.g. red/green/blue). */
   color?: string;
+  /** Runtime-assigned size key (e.g. small/medium/large). */
+  size?: string;
   x: number;
   y: number;
   renderX: number;
@@ -109,10 +111,12 @@ export interface ItemInstance {
 
 export type ItemShape = 'square' | 'circle' | 'triangle';
 export type ItemColor = 'red' | 'green' | 'blue';
+export type ItemSize = 'small' | 'medium' | 'large';
 
 export interface EmitterSequenceItem {
   shape: ItemShape;
   color: ItemColor;
+  size: ItemSize;
 }
 
 /**
@@ -148,6 +152,7 @@ export interface Emitter extends BaseBuilding {
   type: 'emitter';
   sequence: EmitterSequenceItem[];
   nextSequenceIndex: number;
+  loop: boolean;
 }
 
 export interface Belt extends BaseBuilding {
@@ -196,16 +201,6 @@ export interface Merger extends BaseBuilding {
 export type Building = Emitter | Belt | Receiver | Scanner | Arm | Button | Lamp | Splitter | Merger;
 
 /**
- * Static objects on the map (e.g. garbage piles)
- */
-export interface StaticObject {
-  type: 'garbage';
-  x: number;
-  y: number;
-  itemPool: string[];
-}
-
-/**
  * Complete game state
  */
 export interface WorldState {
@@ -213,7 +208,6 @@ export interface WorldState {
   items: Map<string, ItemInstance>;   // Key format: "x,y"
   wireCells: Set<string>; // Key format: "x,y"
   signals: Map<string, boolean>; // Key format: building key
-  staticObjects: Map<string, StaticObject>; // Key format: "x,y"
   /**
    * Maps secondary-cell key → anchor-cell key for multi-cell buildings.
    * Blocks the secondary cell from hosting items or other buildings.

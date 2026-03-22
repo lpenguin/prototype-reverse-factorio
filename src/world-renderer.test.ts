@@ -79,6 +79,7 @@ describe('addItem id assignment', () => {
     const item = world.items.get(gridKey(0, 0))!;
     expect(item.shape).toBe('circle');
     expect(item.color).toBe('blue');
+    expect(item.size).toBe('large');
   });
 });
 
@@ -217,6 +218,7 @@ describe('WorldRenderer.syncItems id-based node management', () => {
       defId: 'small-red-square',
       shape: 'triangle',
       color: 'blue',
+      size: 'large',
       x: 0,
       y: 0,
       renderX: 0,
@@ -230,6 +232,7 @@ describe('WorldRenderer.syncItems id-based node management', () => {
     const node = renderer.scene.getNode('items', itemId) as ShapeNode;
     expect(node.shape).toBe('polygon');
     expect(node.fill).toBe('#4444ff');
+    expect(node.points).toContain('10'); // large size -> triangle points use +/-10
   });
 
   it('reuses the same node when an item moves to a different cell (same id)', () => {
