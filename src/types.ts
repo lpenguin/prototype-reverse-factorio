@@ -232,4 +232,5 @@ export interface ViewState {
   selectedDirection: Direction;
   previewCoords: { x: number; y: number } | null;
   wirePreviewCells: string[];
+  wireErasePreviewCells: string[];
 }

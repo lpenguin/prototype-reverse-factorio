@@ -21,7 +21,7 @@ export class WorldRenderer {
   private _gridLines: SVGLineElement[] = [];
 
   // Preview cache for change detection
-  private _prevPreview = { buildingId: '', x: NaN, y: NaN, direction: NaN, wireKey: '' };
+  private _prevPreview = { buildingId: '', x: NaN, y: NaN, direction: NaN, wireKey: '', wireEraseKey: '' };
 
   // Per-instance building render handlers
   private readonly _buildingHandlers = new Map<string, ReturnType<typeof createBuildingRenderHandler>>();
@@ -224,7 +224,8 @@ export class WorldRenderer {
     // Check if anything changed
     const prev = this._prevPreview;
     const wireKey = view.wirePreviewCells.join('|');
-    const changed = prev.buildingId !== buildingId || prev.x !== px || prev.y !== py || prev.direction !== dir || prev.wireKey !== wireKey;
+    const wireEraseKey = view.wireErasePreviewCells.join('|');
+    const changed = prev.buildingId !== buildingId || prev.x !== px || prev.y !== py || prev.direction !== dir || prev.wireKey !== wireKey || prev.wireEraseKey !== wireEraseKey;
     if (!changed) return;
 
     prev.buildingId = buildingId;
@@ -232,12 +233,15 @@ export class WorldRenderer {
     prev.y = py;
     prev.direction = dir;
     prev.wireKey = wireKey;
+    prev.wireEraseKey = wireEraseKey;
 
     // Remove old preview
     const existing = this.scene.getNode('preview', 'ghost');
     if (existing) this.scene.removeNode('preview', 'ghost');
 
-    if (!buildingId || isNaN(px)) return;
+    if (!buildingId) return;
+    // For wire tool, allow rendering even without previewCoords (erase-only drag)
+    if (buildingId !== 'wire' && isNaN(px)) return;
 
     if (buildingId === 'wire') {
       const group = new GroupNode();
@@ -250,6 +254,17 @@ export class WorldRenderer {
         tile.fill = '#22c55e';
         tile.fillOpacity = 0.75;
         tile.stroke = '#14532d';
+        tile.strokeWidth = 1;
+        group.addChild(tile);
+      }
+
+      for (const key of view.wireErasePreviewCells) {
+        const [wx, wy] = key.split(',').map(Number);
+        const tile = new ShapeNode('rect');
+        tile.setRect(wx * CELL_SIZE + 10, wy * CELL_SIZE + 10, CELL_SIZE - 20, CELL_SIZE - 20);
+        tile.fill = '#ef4444';
+        tile.fillOpacity = 0.75;
+        tile.stroke = '#7f1d1d';
         tile.strokeWidth = 1;
         group.addChild(tile);
       }

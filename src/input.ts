@@ -1,7 +1,7 @@
 import type { ViewState, WorldState, Direction, Building, ItemInstance } from './types.ts';
 import { CELL_SIZE } from './types.ts';
 import { updateTransform, updateRequestPopup, renderRequestRepository } from './renderer.ts';
-import { addWireCells, getOrthogonalDragCells, placeBuilding, gridKey, removeItem, removeBuilding } from './world.ts';
+import { addWireCells, removeWireCells, getOrthogonalDragCells, placeBuilding, gridKey, removeItem, removeBuilding } from './world.ts';
 import { buildingsRegistry as registry, requestRegistry } from './registry.ts';
 import { getHandler } from './simulation.ts';
 import type { WorldRenderer } from './world-renderer.ts';
@@ -21,6 +21,8 @@ export function setupInput(
   let isPainting = false;
   let isWireDragging = false;
   let wireStartCoords: { x: number; y: number } | null = null;
+  let isWireEraseDragging = false;
+  let wireEraseStartCoords: { x: number; y: number } | null = null;
   let lastX = 0;
   let lastY = 0;
 
@@ -97,6 +99,7 @@ export function setupInput(
     viewState.selectedBuildingId = null;
     viewState.previewCoords = null;
     viewState.wirePreviewCells = [];
+    viewState.wireErasePreviewCells = [];
     document.querySelectorAll('.tool').forEach(t => t.classList.remove('selected'));
     updateDisplay();
   };
@@ -164,6 +167,17 @@ export function setupInput(
       updateDisplay();
     } else if (e.button === 2) { // Right-click
       const coords = getGridCoords(e.clientX, e.clientY);
+
+      if (viewState.selectedBuildingId === 'wire') {
+        // Start wire erase drag
+        isWireEraseDragging = true;
+        wireEraseStartCoords = coords;
+        viewState.wireErasePreviewCells = [gridKey(coords.x, coords.y)];
+        svgElement.setPointerCapture(e.pointerId);
+        updateDisplay();
+        return;
+      }
+
       const key = `${coords.x},${coords.y}`;
       const existing = world.buildings.get(key);
 
@@ -198,12 +212,16 @@ export function setupInput(
       viewState.wirePreviewCells = getOrthogonalDragCells(wireStartCoords, coords);
     }
 
+    if (isWireEraseDragging && wireEraseStartCoords) {
+      viewState.wireErasePreviewCells = getOrthogonalDragCells(wireEraseStartCoords, coords);
+    }
+
     // Update preview coords whenever a tool is selected
     if (viewState.selectedBuildingId) {
       if (!viewState.previewCoords || viewState.previewCoords.x !== coords.x || viewState.previewCoords.y !== coords.y) {
         viewState.previewCoords = coords;
         updateDisplay();
-      } else if (isWireDragging) {
+      } else if (isWireDragging || isWireEraseDragging) {
         // Cursor hasn't left the cell but wire cells may have changed (drag just started)
         updateDisplay();
       }
@@ -238,7 +256,18 @@ export function setupInput(
   });
 
   svgElement.addEventListener('pointerup', (e) => {
-    if (isWireDragging) {
+    if (e.button === 2 && isWireEraseDragging) {
+      const coords = getGridCoords(e.clientX, e.clientY);
+      if (wireEraseStartCoords) {
+        const cells = getOrthogonalDragCells(wireEraseStartCoords, coords);
+        removeWireCells(world, cells);
+      }
+      viewState.wireErasePreviewCells = [];
+      isWireEraseDragging = false;
+      wireEraseStartCoords = null;
+      updateDisplay();
+      svgElement.releasePointerCapture(e.pointerId);
+    } else if (isWireDragging) {
       const coords = getGridCoords(e.clientX, e.clientY);
       if (wireStartCoords) {
         const cells = getOrthogonalDragCells(wireStartCoords, coords);

@@ -170,3 +170,9 @@ export function addWireCells(world: WorldState, cellKeys: string[]): void {
     world.wireCells.add(key);
   }
 }
+
+export function removeWireCells(world: WorldState, cellKeys: string[]): void {
+  for (const key of cellKeys) {
+    world.wireCells.delete(key);
+  }
+}

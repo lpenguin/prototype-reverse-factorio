@@ -18,6 +18,7 @@ function init() {
     selectedDirection: 1, // Default to East
     previewCoords: null,
     wirePreviewCells: [],
+    wireErasePreviewCells: [],
   };
 
   const svg = document.querySelector<SVGSVGElement>('#app')!;
