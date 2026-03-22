@@ -1,4 +1,4 @@
-import type { Emitter, ItemColor, ItemShape, ItemSize, Receiver, Scanner, WorldState } from './types.ts';
+import type { Emitter, ItemColor, ItemShape, ItemSize, Painter, Receiver, Scanner, WorldState } from './types.ts';
 import { html, render } from 'lit-html';
 import { propertyRegistry, requestRegistry } from './registry.ts';
 
@@ -271,6 +271,52 @@ export function openEmitterDialog(
           }}>Add Item</button>
           <button @click=${close}>Done</button>
         </div>
+      </div>
+    `, dialog);
+  };
+
+  renderDialog();
+}
+
+// ---------------------------------------------------------------------------
+// Painter color picker dialog
+// ---------------------------------------------------------------------------
+
+const PAINT_COLOR_OPTIONS: ItemColor[] = ['red', 'green', 'blue'];
+
+export function openPainterDialog(
+  painter: Painter,
+  onClose?: () => void,
+): void {
+  document.querySelector('#sorter-dialog')?.remove();
+
+  const dialog = document.createElement('div');
+  dialog.id = 'sorter-dialog';
+  document.body.appendChild(dialog);
+  dialog.style.left = `${window.innerWidth / 2 - 120}px`;
+  dialog.style.top  = `${window.innerHeight / 2 - 80}px`;
+
+  const close = () => { dialog.remove(); onClose?.(); };
+
+  const renderDialog = () => {
+    render(html`
+      <div class="sorter-dialog-header">
+        <span>Painter Color</span>
+        <button aria-label="Close" @click=${close}>&times;</button>
+      </div>
+      <div class="sorter-dialog-body">
+        ${PAINT_COLOR_OPTIONS.map(color => {
+          const hex = String(propertyRegistry.getValue('color', color) ?? color);
+          return html`
+            <div
+              class=${'receiver-dialog-item' + (painter.paintColor === color ? ' selected' : '')}
+              @click=${() => { painter.paintColor = color; renderDialog(); }}
+              style="display:flex;align-items:center;gap:8px;">
+              <span class="color-swatch" style="background-color:${hex};width:16px;height:16px;display:inline-block;border-radius:3px;border:1px solid #555;"></span>
+              <span>${color}</span>
+            </div>`;
+        })}
+        <button style="margin-top:8px" @click=${close}>Done</button>
       </div>
     `, dialog);
   };

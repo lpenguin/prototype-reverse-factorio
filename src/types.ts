@@ -118,7 +118,7 @@ export interface EmitterSequenceItem {
 /**
  * Base building interface
  */
-export type BuildingType = 'emitter' | 'belt' | 'receiver' | 'scanner' | 'arm' | 'button' | 'lamp' | 'splitter' | 'merger';
+export type BuildingType = 'emitter' | 'belt' | 'receiver' | 'scanner' | 'arm' | 'painter' | 'button' | 'lamp' | 'splitter' | 'merger';
 
 export interface BuildingDefinition {
   id: string;
@@ -173,6 +173,11 @@ export interface Arm extends BaseBuilding {
   type: 'arm';
 }
 
+export interface Painter extends BaseBuilding {
+  type: 'painter';
+  paintColor: ItemColor;
+}
+
 export interface Button extends BaseBuilding {
   type: 'button';
   isOn: boolean;
@@ -194,7 +199,7 @@ export interface Merger extends BaseBuilding {
   lastInputSide?: 0 | 1;
 }
 
-export type Building = Emitter | Belt | Receiver | Scanner | Arm | Button | Lamp | Splitter | Merger;
+export type Building = Emitter | Belt | Receiver | Scanner | Arm | Painter | Button | Lamp | Splitter | Merger;
 
 /**
  * Complete game state

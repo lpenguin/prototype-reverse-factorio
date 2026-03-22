@@ -37,6 +37,7 @@ import type {
   Emitter,
   Scanner,
   Arm,
+  Painter,
   Button,
   Lamp,
   Splitter,
@@ -480,6 +481,10 @@ export abstract class BuildingHandler<T extends Building> {
   emitsSignal(_world: WorldState, _building: T): boolean {
     return false;
   }
+
+  applyEffects(_world: WorldState, _building: T, _key: string): void {
+    // default: no side-effects
+  }
 }
 
 class ReceiverHandler extends BuildingHandler<Receiver> {
@@ -576,6 +581,20 @@ class ButtonHandler extends BuildingHandler<Button> {
   }
 }
 
+class PainterHandler extends BuildingHandler<Painter> {
+  accept() { return false; }
+
+  applyEffects(world: WorldState, painter: Painter, key: string): void {
+    if (world.signals.get(key) !== true) return;
+    const { dx, dy } = getDirectionOffset(painter.direction);
+    const inputKey = gridKey(painter.x + dx, painter.y + dy);
+    const item = world.items.get(inputKey);
+    if (item) {
+      item.color = painter.paintColor;
+    }
+  }
+}
+
 class SplitterHandler extends BuildingHandler<Splitter> {
   accept() { return false; }
 
@@ -634,6 +653,7 @@ const handlers = new Map<BuildingType, BuildingHandler<Building>>([
   ['receiver', new ReceiverHandler()],
   ['scanner',  new ScannerHandler()],
   ['arm',      new ArmHandler()],
+  ['painter',  new PainterHandler()],
   ['button',   new ButtonHandler()],
   ['splitter', new SplitterHandler()],
   ['merger',   new MergerHandler()],
@@ -650,12 +670,20 @@ export function getHandler(type: BuildingType): BuildingHandler<Building> | unde
 // Public API
 // ---------------------------------------------------------------------------
 
+function applyBuildingEffects(world: WorldState): void {
+  for (const [key, building] of world.buildings) {
+    const handler = handlers.get(building.type);
+    handler?.applyEffects(world, building as never, key);
+  }
+}
+
 export function tickWorld(world: WorldState): void {
   world.tick++;
   propagateSignals(world);
   generateNewItems(world);
   const tickets = buildTickets(generateMoveProposals(world), world);
   resolveIntents(tickets, world);
+  applyBuildingEffects(world);
   executeTickets(tickets, world);
 }
 

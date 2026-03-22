@@ -1,4 +1,5 @@
-import type { Building, BuildingType, WorldState, Emitter, Receiver, Scanner, Arm, Button, Lamp, Splitter, Merger } from './types.ts';
+import type { Building, BuildingType, WorldState, Emitter, Receiver, Scanner, Arm, Painter, Button, Lamp, Splitter, Merger } from './types.ts';
+import type { ItemColor } from './types.ts';
 import { CELL_SIZE } from './types.ts';
 import * as TWEEN from '@tweenjs/tween.js';
 import type { GroupNode } from './scene.ts';
@@ -6,7 +7,8 @@ import { SpriteNode, ShapeNode, TextNode, InlineSvgNode } from './scene.ts';
 import { buildingsRegistry as registry, propertyRegistry } from './registry.ts';
 import { getDirectionOffset, gridKey } from './world.ts';
 import armInlineSvg from './assets/arm.inline.svg?raw';
-import { openEmitterDialog, openScannerDialog, openReceiverDialog } from './dialogs.ts';
+import painterInlineSvg from './assets/painter.inline.svg?raw';
+import { openEmitterDialog, openScannerDialog, openReceiverDialog, openPainterDialog } from './dialogs.ts';
 
 // ---------------------------------------------------------------------------
 // Abstract base handler — one instance per building in the world
@@ -432,12 +434,67 @@ class MergerRenderHandler extends BuildingRenderHandler<Merger> {
 
 type HandlerFactory = () => BuildingRenderHandler<Building>;
 
+class PainterRenderHandler extends BuildingRenderHandler<Painter> {
+  private _paintColor?: ItemColor;
+
+  applyState(_world: WorldState, building: Painter, group: GroupNode): void {
+    const x = building.x * CELL_SIZE;
+    const y = building.y * CELL_SIZE;
+    const centerX = x + CELL_SIZE / 2;
+    const centerY = y + CELL_SIZE / 2;
+    const rotation = ((building.direction ?? 1) - 1) * 90;
+
+    const icon = new InlineSvgNode();
+    icon.svgSource = painterInlineSvg;
+    icon.svgX = x + 4;
+    icon.svgY = y + 4;
+    icon.width = CELL_SIZE - 8;
+    icon.height = CELL_SIZE - 8;
+    icon.rotation = rotation;
+    icon.pivotX = centerX;
+    icon.pivotY = centerY;
+    group.addChild(icon);
+
+    // Debug: highlight the input cell the painter watches
+    const { dx, dy } = getDirectionOffset(building.direction);
+    const inputCircle = new ShapeNode('circle');
+    inputCircle.x = (building.x + dx) * CELL_SIZE + CELL_SIZE / 2;
+    inputCircle.y = (building.y + dy) * CELL_SIZE + CELL_SIZE / 2;
+    inputCircle.size = 10;
+    inputCircle.fill = '#D946EF';
+    inputCircle.fillOpacity = 0.6;
+    inputCircle.stroke = '#a21caf';
+    inputCircle.strokeWidth = 2;
+    group.addChild(inputCircle);
+
+    this._updateState(building);
+    this._paintColor = building.paintColor;
+    this._updateColorPreview(icon, building.paintColor);
+  }
+
+  needsRebuild(world: WorldState, building: Painter): boolean {
+    return super.needsRebuild(world, building) || this._paintColor !== building.paintColor;
+  }
+
+  openDialog(_world: WorldState, onClose?: () => void): void {
+    openPainterDialog(this._building, onClose);
+  }
+
+  private _updateColorPreview(icon: InlineSvgNode, color: ItemColor): void {
+    const el = icon.getElementByOriginalId('color-preview');
+    if (!el) return;
+    const hex = String(propertyRegistry.getValue('color', color) ?? '#888888');
+    el.setAttribute('fill', hex);
+  }
+}
+
 const buildingHandlerFactories = new Map<BuildingType, HandlerFactory>([
   ['emitter',  () => new EmitterRenderHandler()],
   ['belt',     () => new DefaultBuildingRenderHandler()],
   ['receiver', () => new ReceiverRenderHandler()],
   ['scanner',  () => new ScannerRenderHandler()],
   ['arm',      () => new ArmRenderHandler()],
+  ['painter',  () => new PainterRenderHandler()],
   ['button',   () => new ButtonRenderHandler()],
   ['lamp',     () => new LampRenderHandler()],
   ['splitter', () => new SplitterRenderHandler()],

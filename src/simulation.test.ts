@@ -806,3 +806,91 @@ describe('Merger', () => {
     expect(world.buildings.has(gridKey(5, 6))).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Painter
+// ---------------------------------------------------------------------------
+
+describe('Painter Mechanics', () => {
+  /**
+   * Layout:
+   *   painter(0,0,E) — faces East, so input cell is (1,0)
+   *   belt(1,0,W) — item sits here
+   *   button(0,1) wired to painter
+   */
+  function buildPainterWorld(powered = true) {
+    const world = createWorld();
+    placeBuilding(world, { type: 'button', x: 0, y: 1, direction: Direction.E, isOn: powered });
+    world.wireCells.add(gridKey(0, 1));
+    world.wireCells.add(gridKey(0, 0));
+    placeBuilding(world, { type: 'painter', x: 0, y: 0, direction: Direction.E, paintColor: 'green' });
+    placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.W });
+    return world;
+  }
+
+  it('paints item on adjacent input belt when powered', () => {
+    const world = buildPainterWorld(true);
+    addItem(world, { color: 'red', x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 0 });
+
+    tickWorld(world);
+
+    const item = world.items.get(gridKey(1, 0));
+    expect(item).toBeDefined();
+    expect(item!.color).toBe('green');
+  });
+
+  it('does not paint when unpowered', () => {
+    const world = buildPainterWorld(false);
+    addItem(world, { color: 'red', x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 0 });
+
+    tickWorld(world);
+
+    const item = world.items.get(gridKey(1, 0));
+    expect(item!.color).toBe('red');
+  });
+
+  it('does not crash when input belt is empty', () => {
+    const world = buildPainterWorld(true);
+    expect(() => tickWorld(world)).not.toThrow();
+    expect(world.items.size).toBe(0);
+  });
+
+  it('paints to the exact configured color (blue)', () => {
+    const world = createWorld();
+    placeBuilding(world, { type: 'button', x: 0, y: 1, direction: Direction.E, isOn: true });
+    world.wireCells.add(gridKey(0, 1));
+    world.wireCells.add(gridKey(0, 0));
+    placeBuilding(world, { type: 'painter', x: 0, y: 0, direction: Direction.E, paintColor: 'blue' });
+    placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.W });
+    addItem(world, { color: 'red', x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 0 });
+
+    tickWorld(world);
+
+    expect(world.items.get(gridKey(1, 0))!.color).toBe('blue');
+  });
+
+  it('only paints the directly adjacent input cell, not farther cells', () => {
+    const world = buildPainterWorld(true);
+    addItem(world, { color: 'red', x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 0 });
+    placeBuilding(world, { type: 'belt', x: 2, y: 0, direction: Direction.W });
+    addItem(world, { color: 'red', x: 2, y: 0, renderX: 2, renderY: 0, renderScale: 0 });
+
+    tickWorld(world);
+
+    // Item at (2,0) was not directly adjacent to the painter and must remain red
+    const itemAt2 = world.items.get(gridKey(2, 0));
+    if (itemAt2) {
+      expect(itemAt2.color).toBe('red');
+    }
+  });
+
+  it('item stays on its belt cell after painting (painter does not move it)', () => {
+    const world = buildPainterWorld(true);
+    addItem(world, { color: 'red', x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 0 });
+
+    tickWorld(world);
+
+    expect(world.items.has(gridKey(1, 0))).toBe(true);
+    expect(world.items.get(gridKey(1, 0))!.color).toBe('green');
+  });
+});

@@ -231,6 +231,14 @@ export class WorldRenderer {
     node.y = cy;
     node.scaleX = item.renderScale;
     node.scaleY = item.renderScale;
+
+    // Sync color if it has changed (e.g. painted by a Painter building)
+    const colorKey = item.color ?? 'red';
+    const registryColor = propertyRegistry.getValue('color', colorKey);
+    const color = typeof registryColor === 'string' ? registryColor : colorKey;
+    if ((node as ShapeNode).fill !== color) {
+      (node as ShapeNode).fill = color;
+    }
   }
 
   // ── Preview ghost ─────────────────────────────────────────────────

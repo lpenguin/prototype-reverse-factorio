@@ -62,6 +62,14 @@ export function setupInput(
           nextSequenceIndex: 0,
           loop: true,
         }
+      : def.type === 'painter'
+      ? {
+          type: 'painter',
+          x: coords.x,
+          y: coords.y,
+          direction: viewState.selectedDirection,
+          paintColor: 'red',
+        }
       : {
           type: def.type,
           x: coords.x,
@@ -143,6 +151,8 @@ export function setupInput(
         } else if (clickedBuilding?.type === 'scanner') {
           worldRenderer.getBuildingHandler(gridKey(coords.x, coords.y))?.openDialog(world, () => updateDisplay());
         } else if (clickedBuilding?.type === 'receiver') {
+          worldRenderer.getBuildingHandler(gridKey(coords.x, coords.y))?.openDialog(world, () => updateDisplay());
+        } else if (clickedBuilding?.type === 'painter') {
           worldRenderer.getBuildingHandler(gridKey(coords.x, coords.y))?.openDialog(world, () => updateDisplay());
         } else {
           isPanning = true;
