@@ -31,4 +31,23 @@ describe('World Logic', () => {
     const port = getPortCell(emitter, Direction.S);
     expect(port).toEqual({ x: 5, y: 6 });
   });
+
+  it('should place emitter on an empty tile without garbage', () => {
+    const world = createWorld();
+    world.staticObjects.clear();
+
+    const emitter = { type: 'emitter' as const, x: 3, y: 4, direction: Direction.E };
+    expect(placeBuilding(world, emitter)).toBe(true);
+    expect(world.buildings.get(gridKey(3, 4))?.type).toBe('emitter');
+  });
+
+  it('should not place emitter on an occupied tile', () => {
+    const world = createWorld();
+    world.staticObjects.clear();
+
+    placeBuilding(world, { type: 'belt', x: 8, y: 2, direction: Direction.E });
+    const emitter = { type: 'emitter' as const, x: 8, y: 2, direction: Direction.E };
+
+    expect(placeBuilding(world, emitter)).toBe(false);
+  });
 });
