@@ -529,6 +529,8 @@ class ArmHandler extends BuildingHandler<Arm> {
 class EmitterHandler extends BuildingHandler<Emitter> {
   accept() { return false; }
 
+  private static readonly DEFAULT_DEF_ID = 'small-red-square';
+
   generateIntents(world: WorldState, emitter: Emitter, key: string): MoveProposal[] {
     if (!world.items.has(key)) return [];
     const { dx, dy } = getDirectionOffset(emitter.direction);
@@ -537,11 +539,16 @@ class EmitterHandler extends BuildingHandler<Emitter> {
 
   spawnItem(world: WorldState, emitter: Emitter, key: string): void {
     if (world.items.has(key)) return; // already holding an item
-    const staticObj = world.staticObjects.get(key);
-    if (!staticObj || staticObj.type !== 'garbage' || staticObj.itemPool.length === 0) return;
-    const itemDefId = staticObj.itemPool[Math.floor(Math.random() * staticObj.itemPool.length)];
+    if (emitter.sequence.length === 0) return;
+    const index = emitter.nextSequenceIndex % emitter.sequence.length;
+    const seqItem = emitter.sequence[index];
+    emitter.nextSequenceIndex = (index + 1) % emitter.sequence.length;
+
     world.items.set(key, {
-      id: nextItemId(), defId: itemDefId,
+      id: nextItemId(),
+      defId: EmitterHandler.DEFAULT_DEF_ID,
+      shape: seqItem.shape,
+      color: seqItem.color,
       x: emitter.x, y: emitter.y,
       renderX: emitter.x, renderY: emitter.y, renderScale: 0,
     });

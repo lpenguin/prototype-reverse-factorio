@@ -6,6 +6,8 @@ import { buildingsRegistry as registry, requestRegistry } from './registry.ts';
 import { getHandler } from './simulation.ts';
 import type { WorldRenderer } from './world-renderer.ts';
 
+const DEFAULT_EMITTER_SEQUENCE = [{ shape: 'circle', color: 'red' }] as const;
+
 export function setupInput(
   svgElement: SVGSVGElement,
   worldGroup: SVGGElement,
@@ -50,13 +52,21 @@ export function setupInput(
     const def = registry.getBuilding(viewState.selectedBuildingId);
     if (!def) return;
 
-    const newBuilding: Building = {
-      type: def.type,
-      x: coords.x,
-      y: coords.y,
-      direction: viewState.selectedDirection,
-      ...(def.type === 'emitter' ? { itemPool: def.itemPool ?? [] } : {})
-    } as Building;
+    const newBuilding: Building = def.type === 'emitter'
+      ? {
+          type: 'emitter',
+          x: coords.x,
+          y: coords.y,
+          direction: viewState.selectedDirection,
+          sequence: DEFAULT_EMITTER_SEQUENCE.map(item => ({ ...item })),
+          nextSequenceIndex: 0,
+        }
+      : {
+          type: def.type,
+          x: coords.x,
+          y: coords.y,
+          direction: viewState.selectedDirection,
+        } as Building;
     
     if (placeBuilding(world, newBuilding)) {
       // If there's an item at the placed cell, let the building consume it

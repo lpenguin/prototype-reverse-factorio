@@ -107,6 +107,14 @@ export interface ItemInstance {
   renderScale: number;
 }
 
+export type ItemShape = 'square' | 'circle' | 'triangle';
+export type ItemColor = 'red' | 'green' | 'blue';
+
+export interface EmitterSequenceItem {
+  shape: ItemShape;
+  color: ItemColor;
+}
+
 /**
  * Base building interface
  */
@@ -138,6 +146,8 @@ export interface BaseBuilding {
 
 export interface Emitter extends BaseBuilding {
   type: 'emitter';
+  sequence: EmitterSequenceItem[];
+  nextSequenceIndex: number;
 }
 
 export interface Belt extends BaseBuilding {

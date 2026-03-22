@@ -408,29 +408,41 @@ describe('Button and Lamp Signals', () => {
 });
 
 describe('Emitter', () => {
-  function placeEmitter(world: ReturnType<typeof createWorld>, x: number, y: number, dir: typeof Direction[keyof typeof Direction], itemPool: string[]) {
-    const key = gridKey(x, y);
-    world.staticObjects.set(key, { type: 'garbage', x, y, itemPool });
-    placeBuilding(world, { type: 'emitter', x, y, direction: dir });
+  function placeEmitter(
+    world: ReturnType<typeof createWorld>,
+    x: number,
+    y: number,
+    dir: typeof Direction[keyof typeof Direction],
+    sequence: Array<{ shape: 'square' | 'circle' | 'triangle'; color: 'red' | 'green' | 'blue' }>,
+  ) {
+    placeBuilding(world, {
+      type: 'emitter',
+      x,
+      y,
+      direction: dir,
+      sequence,
+      nextSequenceIndex: 0,
+    });
   }
 
   it('should spawn an item and move it forward in one tick', () => {
     const world = createWorld();
-    placeEmitter(world, 0, 0, Direction.E, ['iron']);
+    placeEmitter(world, 0, 0, Direction.E, [{ shape: 'circle', color: 'red' }]);
     placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.E });
 
     tickWorld(world);
 
     // Item spawned at emitter, then moved to belt
     expect(world.items.has(gridKey(1, 0))).toBe(true);
-    expect(world.items.get(gridKey(1, 0))?.defId).toBe('iron');
+    expect(world.items.get(gridKey(1, 0))?.shape).toBe('circle');
+    expect(world.items.get(gridKey(1, 0))?.color).toBe('red');
     // Emitter cell is now free for next spawn
     expect(world.items.has(gridKey(0, 0))).toBe(false);
   });
 
   it('should keep item on emitter when output is blocked', () => {
     const world = createWorld();
-    placeEmitter(world, 0, 0, Direction.E, ['iron']);
+    placeEmitter(world, 0, 0, Direction.E, [{ shape: 'triangle', color: 'green' }]);
     placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.E });
 
     // Block the output belt with an existing item
@@ -442,14 +454,15 @@ describe('Emitter', () => {
 
     // item spawned on emitter but couldn't move — stays on emitter
     expect(world.items.has(gridKey(0, 0))).toBe(true);
-    expect(world.items.get(gridKey(0, 0))?.defId).toBe('iron');
+    expect(world.items.get(gridKey(0, 0))?.shape).toBe('triangle');
+    expect(world.items.get(gridKey(0, 0))?.color).toBe('green');
     // blocked items stay put
     expect(world.items.has(gridKey(1, 0))).toBe(true);
   });
 
   it('should move blocked emitter item on next tick when output clears', () => {
     const world = createWorld();
-    placeEmitter(world, 0, 0, Direction.E, ['iron']);
+    placeEmitter(world, 0, 0, Direction.E, [{ shape: 'square', color: 'blue' }]);
     placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.E });
     placeBuilding(world, createTestReceiver(2, 0, Direction.E));
 
@@ -462,13 +475,14 @@ describe('Emitter', () => {
     // copper moved into receiver, emitter item should have moved to belt
     // (both resolve in same tick: copper moves to receiver, emitter moves to belt)
     expect(world.items.has(gridKey(1, 0))).toBe(true);
-    expect(world.items.get(gridKey(1, 0))?.defId).toBe('iron');
+    expect(world.items.get(gridKey(1, 0))?.shape).toBe('square');
+    expect(world.items.get(gridKey(1, 0))?.color).toBe('blue');
     expect(world.items.has(gridKey(0, 0))).toBe(false);
   });
 
   it('should not spawn a second item while one is still on the emitter', () => {
     const world = createWorld();
-    placeEmitter(world, 0, 0, Direction.E, ['iron']);
+    placeEmitter(world, 0, 0, Direction.E, [{ shape: 'circle', color: 'red' }]);
     placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.E });
 
     // Block the output belt so item stays on emitter
@@ -478,11 +492,39 @@ describe('Emitter', () => {
     tickWorld(world); // spawns first item — blocked, stays on emitter
     const firstItem = world.items.get(gridKey(0, 0));
     expect(firstItem).toBeDefined();
-    expect(firstItem?.defId).toBe('iron');
+    expect(firstItem?.shape).toBe('circle');
+    expect(firstItem?.color).toBe('red');
 
     tickWorld(world); // should NOT spawn a second item (cell occupied)
     const secondItem = world.items.get(gridKey(0, 0));
     expect(secondItem?.id).toBe(firstItem?.id); // same item, not replaced
+  });
+
+  it('should emit sequence entries in order and then loop', () => {
+    const world = createWorld();
+    placeEmitter(world, 0, 0, Direction.E, [
+      { shape: 'circle', color: 'red' },
+      { shape: 'square', color: 'green' },
+      { shape: 'triangle', color: 'blue' },
+    ]);
+    placeBuilding(world, { type: 'belt', x: 1, y: 0, direction: Direction.E });
+    placeBuilding(world, createTestReceiver(2, 0, Direction.E));
+
+    tickWorld(world); // emits circle/red
+    expect(world.items.get(gridKey(1, 0))?.shape).toBe('circle');
+    expect(world.items.get(gridKey(1, 0))?.color).toBe('red');
+
+    tickWorld(world); // emits square/green
+    expect(world.items.get(gridKey(1, 0))?.shape).toBe('square');
+    expect(world.items.get(gridKey(1, 0))?.color).toBe('green');
+
+    tickWorld(world); // emits triangle/blue
+    expect(world.items.get(gridKey(1, 0))?.shape).toBe('triangle');
+    expect(world.items.get(gridKey(1, 0))?.color).toBe('blue');
+
+    tickWorld(world); // loops to circle/red again
+    expect(world.items.get(gridKey(1, 0))?.shape).toBe('circle');
+    expect(world.items.get(gridKey(1, 0))?.color).toBe('red');
   });
 });
 
