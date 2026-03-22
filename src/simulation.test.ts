@@ -559,3 +559,150 @@ describe('Splitter', () => {
     expect(world.buildings.has(gridKey(5, 6))).toBe(false);
   });
 });
+
+describe('Merger', () => {
+  // Merger facing East at (5, 5):
+  //   anchor:        (5, 5)  — input holding cell 1, items arrive here
+  //   secondary:     (5, 6)  — input holding cell 2, items arrive here
+  //   input1 port:   (4, 5)  — belt at this cell feeds items into anchor
+  //   input2 port:   (4, 6)  — belt at this cell feeds items into secondary
+  //   output port:   (6, 6)  — East of secondary
+
+  it('should move an item from the anchor cell to the output', () => {
+    const world = createWorld();
+    placeBuilding(world, { type: 'merger', x: 5, y: 5, direction: Direction.E });
+    placeBuilding(world, { type: 'belt', x: 6, y: 6, direction: Direction.E }); // output
+
+    // Item at anchor (input holding) cell
+    addItem(world, { defId: 'iron', x: 5, y: 5, renderX: 5, renderY: 5, renderScale: 1 });
+
+    tickWorld(world);
+
+    expect(world.items.has(gridKey(5, 5))).toBe(false);
+    expect(world.items.has(gridKey(6, 6))).toBe(true);
+  });
+
+  it('should move an item from the secondary cell to the output', () => {
+    const world = createWorld();
+    placeBuilding(world, { type: 'merger', x: 5, y: 5, direction: Direction.E });
+    placeBuilding(world, { type: 'belt', x: 6, y: 6, direction: Direction.E }); // output
+
+    // Item at secondary (input holding) cell
+    addItem(world, { defId: 'iron', x: 5, y: 6, renderX: 5, renderY: 6, renderScale: 1 });
+
+    tickWorld(world);
+
+    expect(world.items.has(gridKey(5, 6))).toBe(false);
+    expect(world.items.has(gridKey(6, 6))).toBe(true);
+  });
+
+  it('should allow a belt at input1 port to feed items into the anchor cell', () => {
+    const world = createWorld();
+    placeBuilding(world, { type: 'merger', x: 5, y: 5, direction: Direction.E });
+    placeBuilding(world, { type: 'belt', x: 4, y: 5, direction: Direction.E }); // input belt at (-1,0)
+    placeBuilding(world, { type: 'belt', x: 6, y: 6, direction: Direction.E }); // output
+
+    addItem(world, { defId: 'iron', x: 4, y: 5, renderX: 4, renderY: 5, renderScale: 1 });
+
+    // Tick 1: belt moves item from input port (4,5) → anchor (5,5)
+    tickWorld(world);
+    expect(world.items.has(gridKey(4, 5))).toBe(false);
+    expect(world.items.has(gridKey(5, 5))).toBe(true);
+
+    // Tick 2: merger moves item from anchor (5,5) → output (6,6)
+    tickWorld(world);
+    expect(world.items.has(gridKey(5, 5))).toBe(false);
+    expect(world.items.has(gridKey(6, 6))).toBe(true);
+  });
+
+  it('should allow a belt at input2 port to feed items into the secondary cell', () => {
+    const world = createWorld();
+    placeBuilding(world, { type: 'merger', x: 5, y: 5, direction: Direction.E });
+    placeBuilding(world, { type: 'belt', x: 4, y: 6, direction: Direction.E }); // input belt at (-1,1)
+    placeBuilding(world, { type: 'belt', x: 6, y: 6, direction: Direction.E }); // output
+
+    addItem(world, { defId: 'iron', x: 4, y: 6, renderX: 4, renderY: 6, renderScale: 1 });
+
+    // Tick 1: belt moves item from input port (4,6) → secondary (5,6)
+    tickWorld(world);
+    expect(world.items.has(gridKey(4, 6))).toBe(false);
+    expect(world.items.has(gridKey(5, 6))).toBe(true);
+
+    // Tick 2: merger moves item from secondary (5,6) → output (6,6)
+    tickWorld(world);
+    expect(world.items.has(gridKey(5, 6))).toBe(false);
+    expect(world.items.has(gridKey(6, 6))).toBe(true);
+  });
+
+  it('should prefer input1 (anchor) first when lastInputSide is unset', () => {
+    const world = createWorld();
+    placeBuilding(world, { type: 'merger', x: 5, y: 5, direction: Direction.E });
+    placeBuilding(world, { type: 'belt', x: 6, y: 6, direction: Direction.E }); // output
+
+    addItem(world, { defId: 'iron', x: 5, y: 5, renderX: 5, renderY: 5, renderScale: 1 });
+    addItem(world, { defId: 'iron', x: 5, y: 6, renderX: 5, renderY: 6, renderScale: 1 });
+
+    tickWorld(world);
+
+    // lastInputSide=undefined → preferInput1=true → input1 (anchor 5,5) wins
+    expect(world.items.has(gridKey(5, 5))).toBe(false); // input1 moved
+    expect(world.items.has(gridKey(5, 6))).toBe(true);  // input2 stayed
+    expect(world.items.has(gridKey(6, 6))).toBe(true);  // output received it
+  });
+
+  it('should alternate between inputs (round-robin)', () => {
+    const world = createWorld();
+    placeBuilding(world, { type: 'merger', x: 5, y: 5, direction: Direction.E });
+    placeBuilding(world, { type: 'belt', x: 6, y: 6, direction: Direction.E }); // output
+
+    // Tick 1: lastInputSide=undefined → prefer input1 (anchor 5,5) → it moves
+    addItem(world, { defId: 'iron', x: 5, y: 5, renderX: 5, renderY: 5, renderScale: 1 });
+    addItem(world, { defId: 'iron', x: 5, y: 6, renderX: 5, renderY: 6, renderScale: 1 });
+    tickWorld(world);
+    expect(world.items.has(gridKey(5, 5))).toBe(false);
+    expect(world.items.has(gridKey(5, 6))).toBe(true);
+    expect(world.items.has(gridKey(6, 6))).toBe(true);
+
+    // Clear output and re-add to input1 so both inputs are full again
+    world.items.delete(gridKey(6, 6));
+    addItem(world, { defId: 'iron', x: 5, y: 5, renderX: 5, renderY: 5, renderScale: 1 });
+
+    // Tick 2: lastInputSide=0 → prefer input2 (secondary 5,6) → it moves
+    tickWorld(world);
+    expect(world.items.has(gridKey(5, 5))).toBe(true);  // input1 stayed
+    expect(world.items.has(gridKey(5, 6))).toBe(false); // input2 moved
+    expect(world.items.has(gridKey(6, 6))).toBe(true);  // output received it
+  });
+
+  it('should take from the only available input regardless of round-robin state', () => {
+    const world = createWorld();
+    placeBuilding(world, { type: 'merger', x: 5, y: 5, direction: Direction.E });
+    placeBuilding(world, { type: 'belt', x: 6, y: 6, direction: Direction.E }); // output
+
+    // Tick 1: only input1 has item → it moves, sets lastInputSide=0
+    addItem(world, { defId: 'iron', x: 5, y: 5, renderX: 5, renderY: 5, renderScale: 1 });
+    tickWorld(world);
+    expect(world.items.has(gridKey(6, 6))).toBe(true);
+    world.items.delete(gridKey(6, 6));
+
+    // Tick 2: lastInputSide=0 (prefer input2), but only input1 has item → input1 moves anyway
+    addItem(world, { defId: 'iron', x: 5, y: 5, renderX: 5, renderY: 5, renderScale: 1 });
+    tickWorld(world);
+    expect(world.items.has(gridKey(5, 5))).toBe(false);
+    expect(world.items.has(gridKey(6, 6))).toBe(true);
+  });
+
+  it('should block placement of other buildings on the secondary cell', () => {
+    const world = createWorld();
+    placeBuilding(world, { type: 'merger', x: 5, y: 5, direction: Direction.E });
+
+    // Secondary cell (5, 6) is reserved
+    expect(world.buildingSecondary.has(gridKey(5, 6))).toBe(true);
+    expect(world.buildingSecondary.get(gridKey(5, 6))).toBe(gridKey(5, 5));
+
+    // Trying to place any building on the secondary cell must fail
+    const result = placeBuilding(world, { type: 'belt', x: 5, y: 6, direction: Direction.E });
+    expect(result).toBe(false);
+    expect(world.buildings.has(gridKey(5, 6))).toBe(false);
+  });
+});

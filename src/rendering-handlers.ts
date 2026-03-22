@@ -1,4 +1,4 @@
-import type { Building, BuildingType, WorldState, Receiver, Scanner, Arm, Button, Lamp, Splitter } from './types.ts';
+import type { Building, BuildingType, WorldState, Receiver, Scanner, Arm, Button, Lamp, Splitter, Merger } from './types.ts';
 import { CELL_SIZE } from './types.ts';
 import * as TWEEN from '@tweenjs/tween.js';
 import type { GroupNode } from './scene.ts';
@@ -355,6 +355,65 @@ class SplitterRenderHandler extends BuildingRenderHandler<Splitter> {
   }
 }
 
+class MergerRenderHandler extends BuildingRenderHandler<Merger> {
+  applyState(_world: WorldState, building: Merger, group: GroupNode): void {
+    this._updateState(building);
+    const def = registry.getAllBuildings().find(d => d.type === building.type);
+
+    if (def?.iconPath) {
+      const { dx, dy } = getDirectionOffset(building.direction);
+      // Secondary cell is perpendicular-right of anchor: (x-dy, y+dx)
+      const spanCenterX = (building.x + 0.5 - 0.5 * dy) * CELL_SIZE;
+      const spanCenterY = (building.y + 0.5 + 0.5 * dx) * CELL_SIZE;
+      const mergerRotation = (building.direction - 1) * 90;
+
+      const icon = new SpriteNode();
+      icon.href = def.iconPath;
+      icon.width = CELL_SIZE - 8;
+      icon.height = 2 * CELL_SIZE - 8;
+      icon.imgX = spanCenterX - (CELL_SIZE - 8) / 2;
+      icon.imgY = spanCenterY - (2 * CELL_SIZE - 8) / 2;
+      icon.imgRotation = mergerRotation;
+      icon.imgPivotX = spanCenterX;
+      icon.imgPivotY = spanCenterY;
+      group.addChild(icon);
+
+      // Green: input1 port — behind anchor cell
+      const in1Circle = new ShapeNode('circle');
+      in1Circle.x = (building.x - dx) * CELL_SIZE + CELL_SIZE / 2;
+      in1Circle.y = (building.y - dy) * CELL_SIZE + CELL_SIZE / 2;
+      in1Circle.size = 12;
+      in1Circle.fill = '#22c55e';
+      in1Circle.fillOpacity = 0.85;
+      in1Circle.stroke = '#166534';
+      in1Circle.strokeWidth = 2;
+      group.addChild(in1Circle);
+
+      // Green: input2 port — behind secondary cell
+      const in2Circle = new ShapeNode('circle');
+      in2Circle.x = (building.x - dx - dy) * CELL_SIZE + CELL_SIZE / 2;
+      in2Circle.y = (building.y - dy + dx) * CELL_SIZE + CELL_SIZE / 2;
+      in2Circle.size = 12;
+      in2Circle.fill = '#22c55e';
+      in2Circle.fillOpacity = 0.85;
+      in2Circle.stroke = '#166534';
+      in2Circle.strokeWidth = 2;
+      group.addChild(in2Circle);
+
+      // Red: output port — ahead of secondary cell
+      const outCircle = new ShapeNode('circle');
+      outCircle.x = (building.x + dx - dy) * CELL_SIZE + CELL_SIZE / 2;
+      outCircle.y = (building.y + dy + dx) * CELL_SIZE + CELL_SIZE / 2;
+      outCircle.size = 12;
+      outCircle.fill = '#ef4444';
+      outCircle.fillOpacity = 0.85;
+      outCircle.stroke = '#7f1d1d';
+      outCircle.strokeWidth = 2;
+      group.addChild(outCircle);
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
@@ -370,6 +429,7 @@ const buildingHandlerFactories = new Map<BuildingType, HandlerFactory>([
   ['button',   () => new ButtonRenderHandler()],
   ['lamp',     () => new LampRenderHandler()],
   ['splitter', () => new SplitterRenderHandler()],
+  ['merger',   () => new MergerRenderHandler()],
 ]);
 
 /** Create a fresh per-instance handler for a building placed in the world. */

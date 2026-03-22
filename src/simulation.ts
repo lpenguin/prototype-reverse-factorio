@@ -40,6 +40,7 @@ import type {
   Button,
   Lamp,
   Splitter,
+  Merger,
 } from './types.ts';
 import { MoveState } from './types.ts';
 import { itemRegistry } from './registry.ts';
@@ -166,11 +167,14 @@ function buildTickets(proposals: MoveProposal[], world: WorldState): Ticket[] {
 
 function canHoldItems(building: Building | undefined, world: WorldState, targetKey: string): boolean {
   if (world.buildingSecondary.has(targetKey)) {
-    // Only the splitter's secondary cell can receive items (it's the input port)
+    // Secondary cell: allow items for splitter (input) or merger (input)
     const anchorKey = world.buildingSecondary.get(targetKey)!;
-    return world.buildings.get(anchorKey)?.type === 'splitter';
+    const anchorType = world.buildings.get(anchorKey)?.type;
+    return anchorType === 'splitter' || anchorType === 'merger';
   }
   if (!building) return true;
+  // Merger anchor cell acts as an input buffer
+  if (building.type === 'merger') return true;
   return building.type === 'belt' || building.type === 'receiver' || building.type === 'emitter';
 }
 
@@ -374,6 +378,10 @@ function executeTickets(tickets: Ticket[], world: WorldState): void {
       const { dx, dy } = getDirectionOffset(splitter.direction);
       const output1Key = gridKey(splitter.x + dx, splitter.y + dy);
       splitter.lastOutputSide = targetKey === output1Key ? 0 : 1;
+    } else if (sourceBuilding?.type === 'merger') {
+      const merger = sourceBuilding as Merger;
+      // 0 = input1 (anchor) was last used, 1 = input2 (secondary) was last used
+      merger.lastInputSide = ticket.sourceKey === gridKey(merger.x, merger.y) ? 0 : 1;
     }
   }
 
@@ -579,6 +587,35 @@ class SplitterHandler extends BuildingHandler<Splitter> {
   }
 }
 
+class MergerHandler extends BuildingHandler<Merger> {
+  accept() { return false; }
+
+  generateIntents(world: WorldState, merger: Merger, _key: string): MoveProposal[] {
+    const { dx, dy } = getDirectionOffset(merger.direction);
+    // input1: anchor cell
+    const input1Key = gridKey(merger.x, merger.y);
+    // input2: secondary cell (perpendicular-right of anchor)
+    const input2Key = gridKey(merger.x - dy, merger.y + dx);
+    // output: ahead of secondary cell
+    const outputKey = gridKey(merger.x + dx - dy, merger.y + dy + dx);
+
+    const has1 = world.items.has(input1Key);
+    const has2 = world.items.has(input2Key);
+    if (!has1 && !has2) return [];
+
+    // Round-robin: prefer the input NOT used last; fall back to the other if preferred is empty
+    const preferInput1 = merger.lastInputSide !== 0;
+    const preferredKey  = preferInput1 ? input1Key : input2Key;
+    const fallbackKey   = preferInput1 ? input2Key : input1Key;
+    const hasPreferred  = preferInput1 ? has1 : has2;
+    const hasFallback   = preferInput1 ? has2 : has1;
+
+    const sourceKey = hasPreferred ? preferredKey : (hasFallback ? fallbackKey : null);
+    if (!sourceKey) return [];
+    return [{ sourceKey, priority: 0, intent: outputKey }];
+  }
+}
+
 const handlers = new Map<BuildingType, BuildingHandler<Building>>([
   ['emitter',  new EmitterHandler()],
   ['belt',     new BeltHandler()],
@@ -587,6 +624,7 @@ const handlers = new Map<BuildingType, BuildingHandler<Building>>([
   ['arm',      new ArmHandler()],
   ['button',   new ButtonHandler()],
   ['splitter', new SplitterHandler()],
+  ['merger',   new MergerHandler()],
   ['lamp',     new (class extends BuildingHandler<Lamp> {
     accept() { return false; }
   })()],

@@ -359,7 +359,7 @@ export class WorldRenderer {
     const group = new GroupNode();
     group.el.style.pointerEvents = 'none';
 
-    if (buildingId === 'splitter') {
+    if (buildingId === 'splitter' || buildingId === 'merger') {
       // 2-cell ghost: anchor + secondary (perpendicular-right) cell
       const { dx: sdx, dy: sdy } = getDirectionOffset(dir);
       const sx = x - sdy;
@@ -383,7 +383,7 @@ export class WorldRenderer {
       if (def?.iconPath) {
         const spanCenterX = (x + 0.5 - 0.5 * sdy) * CELL_SIZE;
         const spanCenterY = (y + 0.5 + 0.5 * sdx) * CELL_SIZE;
-        const splitterRotation = (dir - 1) * 90;
+        const iconRotation = (dir - 1) * 90;
         const icon = new SpriteNode();
         icon.href = def.iconPath;
         icon.width = CELL_SIZE - 8;
@@ -391,7 +391,7 @@ export class WorldRenderer {
         icon.imgX = spanCenterX - (CELL_SIZE - 8) / 2;
         icon.imgY = spanCenterY - (2 * CELL_SIZE - 8) / 2;
         icon.imgOpacity = 0.6;
-        icon.imgRotation = splitterRotation;
+        icon.imgRotation = iconRotation;
         icon.imgPivotX = spanCenterX;
         icon.imgPivotY = spanCenterY;
         group.addChild(icon);

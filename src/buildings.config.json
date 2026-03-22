@@ -79,6 +79,18 @@
         { "type": "output", "x": 1,  "y": 0, "direction": "E" },
         { "type": "output", "x": 1,  "y": 1, "direction": "E" }
       ]
+    },
+    {
+      "id": "merger",
+      "name": "Merger",
+      "type": "merger",
+      "size": { "x": 1, "y": 2 },
+      "iconPath": "/icons/merger.svg",
+      "ports": [
+        { "type": "input",  "x": -1, "y": 0, "direction": "W" },
+        { "type": "input",  "x": -1, "y": 1, "direction": "W" },
+        { "type": "output", "x": 1,  "y": 1, "direction": "E" }
+      ]
     }
   ]
 }

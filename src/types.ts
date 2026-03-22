@@ -106,7 +106,7 @@ export interface ItemInstance {
 /**
  * Base building interface
  */
-export type BuildingType = 'emitter' | 'belt' | 'receiver' | 'scanner' | 'arm' | 'button' | 'lamp' | 'splitter';
+export type BuildingType = 'emitter' | 'belt' | 'receiver' | 'scanner' | 'arm' | 'button' | 'lamp' | 'splitter' | 'merger';
 
 export interface BuildingDefinition {
   id: string;
@@ -173,7 +173,13 @@ export interface Splitter extends BaseBuilding {
   lastOutputSide?: 0 | 1;
 }
 
-export type Building = Emitter | Belt | Receiver | Scanner | Arm | Button | Lamp | Splitter;
+export interface Merger extends BaseBuilding {
+  type: 'merger';
+  /** 0 = input1 (anchor) was last used, 1 = input2 (secondary) was last used (undefined = neither yet). */
+  lastInputSide?: 0 | 1;
+}
+
+export type Building = Emitter | Belt | Receiver | Scanner | Arm | Button | Lamp | Splitter | Merger;
 
 /**
  * Static objects on the map (e.g. garbage piles)
