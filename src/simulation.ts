@@ -75,9 +75,15 @@ function itemMatchesFilter(
   filterValue?: string,
 ): boolean {
   if (!filterProperty || !filterValue) return true;
+  return String(getEffectiveItemProperty(item, filterProperty) ?? '') === filterValue;
+}
+
+function getEffectiveItemProperty(item: ItemInstance, property: string): string | number | undefined {
+  if (property === 'shape' && item.shape) return item.shape;
+  if (property === 'color' && item.color) return item.color;
   const itemDef = itemRegistry.getItem(item.defId);
-  if (!itemDef) return false;
-  return String(itemDef.properties[filterProperty] ?? '') === filterValue;
+  if (!itemDef) return undefined;
+  return itemDef.properties[property];
 }
 
 // ---------------------------------------------------------------------------
@@ -434,13 +440,11 @@ function scoreReceiver(
   receiver: Receiver,
   item: ItemInstance,
 ): void {
-  const itemDef = itemRegistry.getItem(item.defId);
-  if (!itemDef) return;
   const request = receiver.request;
 
   let matches = true;
   for (const [prop, condition] of Object.entries(request.properties)) {
-    const itemPropVal = String(itemDef.properties[prop] ?? '');
+    const itemPropVal = String(getEffectiveItemProperty(item, prop) ?? '');
     if (!condition.includes(itemPropVal)) { 
       matches = false; 
       break; 

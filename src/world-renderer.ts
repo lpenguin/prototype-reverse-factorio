@@ -231,12 +231,15 @@ export class WorldRenderer {
 
   private _createItemNode(item: ItemInstance): SceneNode {
     const def = itemRegistry.getItem(item.defId);
-    if (!def) return new GroupNode();
+    const props = def?.properties ?? {};
+    const sizeKey = typeof props.size === 'string' ? props.size : '';
+    const shapeKey = item.shape ?? (typeof props.shape === 'string' ? props.shape : 'circle');
+    const colorKey = item.color ?? (typeof props.color === 'string' ? props.color : 'red');
 
-    const props = def.properties;
-    const size = (propertyRegistry.getValue('size', props.size as string) as number) || 24;
-    const shape = (propertyRegistry.getValue('shape', props.shape as string) as string) || 'circle';
-    const color = (propertyRegistry.getValue('color', props.color as string) as string) || '#888';
+    const size = (propertyRegistry.getValue('size', sizeKey) as number) || 24;
+    const shape = (propertyRegistry.getValue('shape', shapeKey) as string) || shapeKey || 'circle';
+    const registryColor = propertyRegistry.getValue('color', colorKey);
+    const color = typeof registryColor === 'string' ? registryColor : colorKey;
 
     let shapeNode: ShapeNode;
     if (shape === 'circle') {

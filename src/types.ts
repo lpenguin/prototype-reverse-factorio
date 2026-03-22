@@ -96,6 +96,10 @@ export interface ItemInstance {
   /** Stable identity assigned by addItem(). Always set once the item is in the world. */
   id: string;
   defId: string;
+  /** Runtime-assigned shape key (e.g. circle/square/triangle). */
+  shape?: string;
+  /** Runtime-assigned color key (e.g. red/green/blue). */
+  color?: string;
   x: number;
   y: number;
   renderX: number;

@@ -1,6 +1,6 @@
 import type { WorldState, Building, ItemInstance, StaticObject, Receiver } from './types.ts';
 import { Direction } from './types.ts';
-import { mapRegistry, buildingsRegistry, requestRegistry } from './registry.ts';
+import { mapRegistry, buildingsRegistry, requestRegistry, itemRegistry } from './registry.ts';
 
 /**
  * Convert grid coordinates to a consistent string key
@@ -163,6 +163,9 @@ export function nextItemId(): string {
 export function addItem(world: WorldState, item: Omit<ItemInstance, 'id'> & { id?: string }): boolean {
   const key = gridKey(item.x, item.y);
   if (world.items.has(key)) return false;
+  const itemDef = itemRegistry.getItem(item.defId);
+  if (!item.shape) item.shape = typeof itemDef?.properties.shape === 'string' ? itemDef.properties.shape : undefined;
+  if (!item.color) item.color = typeof itemDef?.properties.color === 'string' ? itemDef.properties.color : undefined;
   if (!item.id) (item as ItemInstance).id = nextItemId();
   if (item.renderX == null) (item as ItemInstance).renderX = item.x;
   if (item.renderY == null) (item as ItemInstance).renderY = item.y;

@@ -14,6 +14,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { SceneManager } from './scene-manager.ts';
 import { GroupNode } from './scene.ts';
+import type { ShapeNode } from './scene.ts';
 import { WorldRenderer } from './world-renderer.ts';
 import { addItem, nextItemId, gridKey } from './world.ts';
 import { createWorld } from './world.ts';
@@ -71,6 +72,13 @@ describe('addItem id assignment', () => {
     ];
 
     expect(new Set(ids).size).toBe(3);
+  });
+
+  it('assigns shape and color defaults from item definition when omitted', () => {
+    addItem(world, { defId: 'large-blue-circle', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
+    const item = world.items.get(gridKey(0, 0))!;
+    expect(item.shape).toBe('circle');
+    expect(item.color).toBe('blue');
   });
 });
 
@@ -201,6 +209,27 @@ describe('WorldRenderer.syncItems id-based node management', () => {
       expect(renderer.scene.getNode('items', id)).toBeDefined();
     }
     expect(trackedItemKeys().length).toBe(3);
+  });
+
+  it('renders runtime-assigned shape and color instead of defId defaults', () => {
+    const world = createWorld();
+    addItem(world, {
+      defId: 'small-red-square',
+      shape: 'triangle',
+      color: 'blue',
+      x: 0,
+      y: 0,
+      renderX: 0,
+      renderY: 0,
+      renderScale: 1,
+    });
+
+    renderer.syncItems(world);
+
+    const itemId = world.items.get(gridKey(0, 0))!.id;
+    const node = renderer.scene.getNode('items', itemId) as ShapeNode;
+    expect(node.shape).toBe('polygon');
+    expect(node.fill).toBe('#4444ff');
   });
 
   it('reuses the same node when an item moves to a different cell (same id)', () => {

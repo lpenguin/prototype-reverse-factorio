@@ -152,6 +152,27 @@ describe('Signal System', () => {
     expect(world.signals.get(gridKey(1, 0))).toBeUndefined();
     expect(world.signals.get(gridKey(0, 0))).toBeUndefined();
   });
+
+  it('should use runtime-assigned color when evaluating scanner predicate', () => {
+    const world = createWorld();
+
+    placeBuilding(world, { type: 'scanner', x: 1, y: 0, direction: Direction.E, filterProperty: 'color', filterValue: 'red' });
+    world.wireCells.add(gridKey(1, 0));
+
+    addItem(world, {
+      defId: 'large-blue-circle',
+      color: 'red',
+      x: 2,
+      y: 0,
+      renderX: 2,
+      renderY: 0,
+      renderScale: 0,
+    });
+
+    tickWorld(world);
+
+    expect(world.signals.get(gridKey(1, 0))).toBe(true);
+  });
 });
 
 describe('Arm Mechanics', () => {
@@ -338,7 +359,10 @@ describe('Arm fallback when output is occupied', () => {
     // the arm cell, which cannot hold items. This permanently jams the output
     // belt; it has no valid move and stays at (-1,0) every tick.
     const outputBelt = world.buildings.get(gridKey(-1, 0))!;
-    (outputBelt as any).direction = Direction.E;
+    if (outputBelt.type !== 'belt') {
+      throw new Error('Expected belt at output position');
+    }
+    outputBelt.direction = Direction.E;
     addItem(world, { defId: 'small-red-square', x: -1, y: 0, renderX: -1, renderY: 0, renderScale: 0 });
 
     // Belt-forward fallback from (1,0,W) = (0,0) = arm cell → cannot hold items.

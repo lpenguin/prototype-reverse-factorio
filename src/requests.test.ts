@@ -85,4 +85,41 @@ describe('Request Logic', () => {
     
     expect(world.playerMoney).toBe(-specificReq.penalty);
   });
+
+  it('should match request using runtime-assigned item color instead of defId defaults', () => {
+    const world = createWorld();
+    world.buildings.clear();
+    world.items.clear();
+    world.playerMoney = 0;
+
+    const specificReq = {
+      id: 'test-req-runtime-color',
+      name: 'Red stuff',
+      properties: { color: ['red'] },
+      cost: 10,
+      penalty: 5
+    };
+
+    const receiver: Receiver = {
+      type: 'receiver' as const, x: 30, y: 30, direction: Direction.E,
+      request: specificReq
+    };
+    placeBuilding(world, receiver);
+    (world.buildings.get('30,30') as Receiver).request = specificReq;
+
+    placeBuilding(world, { type: 'belt', x: 29, y: 30, direction: Direction.E });
+    addItem(world, {
+      defId: 'large-blue-circle',
+      color: 'red',
+      x: 29,
+      y: 30,
+      renderX: 29,
+      renderY: 30,
+      renderScale: 0,
+    });
+
+    tickWorld(world);
+
+    expect(world.playerMoney).toBe(specificReq.cost);
+  });
 });
