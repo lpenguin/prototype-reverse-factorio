@@ -1,6 +1,7 @@
-import type { ViewState, WorldState, Receiver, Scanner, RequestDefinition } from './types.ts';
+import type { ViewState, WorldState, RequestDefinition } from './types.ts';
 import { propertyRegistry, requestRegistry } from './registry.ts';
 import { gridKey } from './world.ts';
+import type { WorldRenderer } from './world-renderer.ts';
 
 /**
  * Updates the main world <G> element's transform to reflect the view state.
@@ -86,164 +87,15 @@ export function updateHUD(world: WorldState): void {
 }
 
 /**
- * Open the scanner configuration dialog
- */
-export function openScannerDialog(scanner: Scanner, onClose?: () => void): void {
-  openFilterDialog('Scanner Predicate', scanner, onClose);
-}
-
-function openFilterDialog(
-  title: string,
-  target: { filterProperty?: string; filterValue?: string },
-  onClose?: () => void,
-): void {
-  document.querySelector('#sorter-dialog')?.remove();
-
-  const allProperties = propertyRegistry.getAllProperties();
-  const dialog = document.createElement('div');
-  dialog.id = 'sorter-dialog';
-
-  const propertyOptions = allProperties.map(p =>
-    `<option value="${p.id}" ${target.filterProperty === p.id ? 'selected' : ''}>${p.name}</option>`
-  ).join('');
-
-  const currentProp = allProperties.find(p => p.id === target.filterProperty) ?? allProperties[0];
-  const valueOptions = currentProp
-    ? Object.keys(currentProp.values).map(v =>
-        `<option value="${v}" ${target.filterValue === v ? 'selected' : ''}>${v}</option>`
-      ).join('')
-    : '';
-
-  dialog.innerHTML = `
-    <div class="sorter-dialog-header">
-      <span>${title}</span>
-      <button id="sorter-dialog-close" aria-label="Close">&times;</button>
-    </div>
-    <div class="sorter-dialog-body">
-      <label>Property<select id="sorter-prop-select">${propertyOptions}</select></label>
-      <label>Value<select id="sorter-val-select">${valueOptions}</select></label>
-      <button id="sorter-clear-btn">Clear filter (pass all)</button>
-    </div>
-  `;
-
-  document.body.appendChild(dialog);
-  dialog.style.left = `${window.innerWidth / 2 - 120}px`;
-  dialog.style.top  = `${window.innerHeight / 2 - 80}px`;
-
-  const propSelect = dialog.querySelector<HTMLSelectElement>('#sorter-prop-select')!;
-  const valSelect  = dialog.querySelector<HTMLSelectElement>('#sorter-val-select')!;
-
-  propSelect.addEventListener('change', () => {
-    target.filterProperty = propSelect.value;
-    const propDef = allProperties.find(p => p.id === propSelect.value);
-    if (propDef) {
-      valSelect.innerHTML = Object.keys(propDef.values).map(v => `<option value="${v}">${v}</option>`).join('');
-      target.filterValue = valSelect.value;
-    }
-  });
-
-  valSelect.addEventListener('change', () => {
-    target.filterValue = valSelect.value;
-  });
-
-  dialog.querySelector('#sorter-clear-btn')!.addEventListener('click', () => {
-    target.filterProperty = undefined;
-    target.filterValue = undefined;
-    dialog.remove();
-    onClose?.();
-  });
-
-  dialog.querySelector('#sorter-dialog-close')!.addEventListener('click', () => {
-    dialog.remove();
-    onClose?.();
-  });
-}
-
-/**
- * Open the receiver request selection dialog
- */
-export function openReceiverDialog(receiver: Receiver, world: WorldState, onClose?: () => void): void {
-  document.querySelector('#sorter-dialog')?.remove();
-
-  const dialog = document.createElement('div');
-  dialog.id = 'sorter-dialog'; // Reuse style
-
-  const allAvailable = [requestRegistry.getDefaultRequest(), ...world.requests];
-  
-  const itemsHtml = allAvailable.map(req => `
-    <div class="receiver-dialog-item ${receiver.request.id === req.id ? 'selected' : ''}" data-id="${req.id}">
-      <div style="font-weight:bold; color:#4f4">${req.name}</div>
-      <div style="font-size:11px; color:#aaa">$${req.cost} reward</div>
-    </div>
-  `).join('');
-
-  dialog.innerHTML = `
-    <div class="sorter-dialog-header">
-      <span>Select Request</span>
-      <button id="sorter-dialog-close" aria-label="Close">&times;</button>
-    </div>
-    <div class="sorter-dialog-body" style="max-height: 300px; overflow-y: auto; padding:0;">
-      ${itemsHtml}
-    </div>
-  `;
-
-  document.body.appendChild(dialog);
-  dialog.style.left = `${window.innerWidth / 2 - 120}px`;
-  dialog.style.top  = `${window.innerHeight / 2 - 150}px`;
-
-  dialog.querySelectorAll('.receiver-dialog-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const id = item.getAttribute('data-id');
-      const req = allAvailable.find(r => r.id === id);
-      if (req) {
-        receiver.request = req;
-      }
-      dialog.remove();
-      onClose?.();
-    });
-  });
-
-  dialog.querySelector('#sorter-dialog-close')!.addEventListener('click', () => {
-    dialog.remove();
-    onClose?.();
-  });
-}
-
-/**
  * Show or hide the request popup based on hover
  */
-export function updateRequestPopup(world: WorldState, gridX: number, gridY: number, screenX: number, screenY: number): void {
+export function updateRequestPopup(world: WorldState, worldRenderer: WorldRenderer, gridX: number, gridY: number, screenX: number, screenY: number): void {
   const popup = document.querySelector<HTMLDivElement>('#request-popup');
   if (!popup) return;
 
   const key = gridKey(gridX, gridY);
-  const building = world.buildings.get(key);
-
-  if (building?.type === 'receiver') {
-    const receiver = building as Receiver;
-    const request = receiver.request;
-    
-    let content = `<h3>${request.name}</h3>`;
-    
-    for (const [prop, condition] of Object.entries(request.properties)) {
-      let valStr: string;
-      if (prop === 'color') {
-        valStr = condition.map(c => {
-          const val = propertyRegistry.getValue('color', c);
-          return `<span class="color-swatch" style="background-color: ${val}"></span>${c}`;
-        }).join(', ');
-      } else {
-        valStr = condition.join(', ');
-      }
-      content += `<div class="prop"><span class="prop-label">${prop}:</span><span>${valStr}</span></div>`;
-    }
-    
-    if (Object.keys(request.properties).length === 0) {
-      content += `<div class="prop"><span class="prop-label">Condition:</span><span>Any item</span></div>`;
-    }
-    
-    content += `<div class="reward-info">Reward: $${request.cost} | Penalty: $${request.penalty}</div>`;
-    
+  const content = worldRenderer.getBuildingHandler(key)?.createPopupContent(world) ?? null;
+  if (content !== null) {
     popup.innerHTML = content;
     popup.style.display = 'block';
     popup.style.left = `${screenX + 20}px`;

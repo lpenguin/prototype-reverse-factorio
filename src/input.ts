@@ -1,6 +1,6 @@
-import type { ViewState, WorldState, Direction, Building, ItemInstance, Receiver, Scanner } from './types.ts';
+import type { ViewState, WorldState, Direction, Building, ItemInstance } from './types.ts';
 import { CELL_SIZE } from './types.ts';
-import { updateTransform, updateRequestPopup, openScannerDialog, openReceiverDialog, renderRequestRepository } from './renderer.ts';
+import { updateTransform, updateRequestPopup, renderRequestRepository } from './renderer.ts';
 import { addWireCells, getOrthogonalDragCells, placeBuilding, gridKey, removeItem, removeBuilding } from './world.ts';
 import { buildingsRegistry as registry, requestRegistry } from './registry.ts';
 import { getHandler } from './simulation.ts';
@@ -128,9 +128,9 @@ export function setupInput(
           clickedBuilding.isOn = !clickedBuilding.isOn;
           updateDisplay();
         } else if (clickedBuilding?.type === 'scanner') {
-          openScannerDialog(clickedBuilding as Scanner, () => updateDisplay());
+          worldRenderer.getBuildingHandler(gridKey(coords.x, coords.y))?.openDialog(world, () => updateDisplay());
         } else if (clickedBuilding?.type === 'receiver') {
-          openReceiverDialog(clickedBuilding as Receiver, world, () => updateDisplay());
+          worldRenderer.getBuildingHandler(gridKey(coords.x, coords.y))?.openDialog(world, () => updateDisplay());
         } else {
           isPanning = true;
           lastX = e.clientX;
@@ -198,7 +198,7 @@ export function setupInput(
     }
 
     // Update hover popup
-    updateRequestPopup(world, coords.x, coords.y, e.clientX, e.clientY);
+    updateRequestPopup(world, worldRenderer, coords.x, coords.y, e.clientX, e.clientY);
   });
 
   window.addEventListener('keydown', (e) => {

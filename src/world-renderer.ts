@@ -1,11 +1,11 @@
-import type { ViewState, WorldState, ItemInstance, Building, Receiver, StaticObject, Button, Splitter } from './types.ts';
+import type { ViewState, WorldState, ItemInstance, Building, StaticObject } from './types.ts';
 import { CELL_SIZE } from './types.ts';
-import * as TWEEN from '@tweenjs/tween.js';
-import { SceneNode, GroupNode, SpriteNode, ShapeNode, TextNode, LineNode, InlineSvgNode } from './scene.ts';
+import type { SceneNode } from './scene.ts';
+import { GroupNode, SpriteNode, ShapeNode, LineNode } from './scene.ts';
 import { SceneManager } from './scene-manager.ts';
 import { buildingsRegistry as registry, itemRegistry, propertyRegistry } from './registry.ts';
 import { gridKey, getDirectionOffset } from './world.ts';
-import armInlineSvg from './assets/arm.inline.svg?raw';
+import { createBuildingRenderHandler, type BuildingRenderHandler } from './rendering-handlers.ts';
 
 /**
  * Game-specific bridge between WorldState and the generic SceneManager.
@@ -13,8 +13,6 @@ import armInlineSvg from './assets/arm.inline.svg?raw';
  */
 export class WorldRenderer {
   readonly scene: SceneManager;
-  private _armTweens = new Map<string, TWEEN.Tween<{ angle: number }>>();
-  private static readonly ARM_ANIM_MS = 380;
 
   // Cached grid state for change detection
   private _gridGroup: SVGGElement;
@@ -23,6 +21,9 @@ export class WorldRenderer {
 
   // Preview cache for change detection
   private _prevPreview = { buildingId: '', x: NaN, y: NaN, direction: NaN };
+
+  // Per-instance building render handlers
+  private readonly _buildingHandlers = new Map<string, ReturnType<typeof createBuildingRenderHandler>>();
 
   constructor(
     worldGroup: SVGGElement,
@@ -153,6 +154,10 @@ export class WorldRenderer {
     return group;
   }
 
+  getBuildingHandler(key: string): BuildingRenderHandler<Building> | undefined {
+    return this._buildingHandlers.get(key);
+  }
+
   syncBuildings(world: WorldState): void {
     const removed = this.scene.diffMap<Building>(
       'buildings',
@@ -162,244 +167,37 @@ export class WorldRenderer {
     );
 
     for (const key of removed) {
-      this._stopArmTween(key);
+      this._buildingHandlers.get(key)?.onRemove();
+      this._buildingHandlers.delete(key);
     }
   }
 
   private _createBuildingNode(world: WorldState, key: string, building: Building): SceneNode {
     const group = new GroupNode();
-    (group as any)._buildingState = {};
-    this._applyBuildingState(world, key, building, group);
+    const handler = createBuildingRenderHandler(building.type);
+    if (handler) {
+      this._buildingHandlers.set(key, handler);
+      handler.applyState(world, building, group);
+      handler.syncAnimation(world, group);
+    }
     return group;
   }
 
   private _updateBuildingNode(world: WorldState, key: string, building: Building, node: SceneNode): void {
-    const state = (node as any)._buildingState;
-    const rotation = ((building.direction ?? 1) - 1) * 90;
-    let needsRebuild = false;
+    const group = node as GroupNode;
+    const handler = this._buildingHandlers.get(key);
 
-    if (state.rotation !== rotation) needsRebuild = true;
-    if (building.type === 'receiver') {
-      const receiver = building as Receiver;
-      if (state.requestName !== receiver.request.name) {
-        needsRebuild = true;
-      }
-    }
-    if (building.type === 'lamp') {
-      const isPowered = world.signals.get(key) === true;
-      if (state.isPowered !== isPowered) {
-        needsRebuild = true;
-      }
-    }
-    if (building.type === 'button') {
-      const isOn = (building as Button).isOn;
-      if (state.isOn !== isOn) {
-        needsRebuild = true;
-      }
-    }
-
-    if (needsRebuild) {
-      this._stopArmTween(key);
-      // Clear and recreate children
+    if (handler?.needsRebuild(world, building)) {
+      handler.onRemove();
       for (let i = node.children.length - 1; i >= 0; i--) {
         node.children[i].destroy();
       }
-      this._applyBuildingState(world, key, building, node as GroupNode);
+      handler.applyState(world, building, group);
+      handler.syncAnimation(world, group);
       return;
     }
 
-    if (building.type === 'arm') {
-      this._syncArmAnimation(key, world.signals.get(key) === true, node as GroupNode);
-    }
-  }
-
-  private _applyBuildingState(world: WorldState, key: string, building: Building, group: GroupNode): void {
-    const x = building.x * CELL_SIZE;
-    const y = building.y * CELL_SIZE;
-    const centerX = x + CELL_SIZE / 2;
-    const centerY = y + CELL_SIZE / 2;
-    const rotation = ((building.direction ?? 1) - 1) * 90;
-    const state = (group as any)._buildingState;
-
-    // Icon
-    const def = registry.getAllBuildings().find(d => d.type === building.type);
-    if (building.type === 'arm') {
-      const icon = new InlineSvgNode();
-      icon.svgSource = armInlineSvg;
-      icon.svgX = x + 4;
-      icon.svgY = y + 4;
-      icon.width = CELL_SIZE - 8;
-      icon.height = CELL_SIZE - 8;
-      icon.rotation = rotation;
-      icon.pivotX = centerX;
-      icon.pivotY = centerY;
-      group.addChild(icon);
-      state.icon = icon;
-      state.armPart = icon.getElementByOriginalId('robotic-arm');
-    } else if (building.type === 'splitter' && def?.iconPath) {
-      // 2-cell sprite: pivot at center of the 2-cell span (anchor + secondary)
-      const splitter = building as Splitter;
-      const { dx, dy } = getDirectionOffset(splitter.direction);
-      // Secondary cell is perpendicular-right of anchor: (x-dy, y+dx)
-      const spanCenterX = (building.x + 0.5 - 0.5 * dy) * CELL_SIZE;
-      const spanCenterY = (building.y + 0.5 + 0.5 * dx) * CELL_SIZE;
-      const splitterRotation = (splitter.direction - 1) * 90;
-
-      const icon = new SpriteNode();
-      icon.href = def.iconPath;
-      icon.width = CELL_SIZE - 8;
-      icon.height = 2 * CELL_SIZE - 8;
-      icon.imgX = spanCenterX - (CELL_SIZE - 8) / 2;
-      icon.imgY = spanCenterY - (2 * CELL_SIZE - 8) / 2;
-      icon.imgRotation = splitterRotation;
-      icon.imgPivotX = spanCenterX;
-      icon.imgPivotY = spanCenterY;
-      group.addChild(icon);
-      state.icon = icon;
-
-      // Debug port circles
-      // Green: input port — one step behind secondary cell: (x-dy-dx, y+dx-dy)
-      const inputCircle = new ShapeNode('circle');
-      inputCircle.x = (building.x - dy - dx) * CELL_SIZE + CELL_SIZE / 2;
-      inputCircle.y = (building.y + dx - dy) * CELL_SIZE + CELL_SIZE / 2;
-      inputCircle.size = 12;
-      inputCircle.fill = '#22c55e';
-      inputCircle.fillOpacity = 0.85;
-      inputCircle.stroke = '#166534';
-      inputCircle.strokeWidth = 2;
-      group.addChild(inputCircle);
-
-      // Red: output1 port (ahead of anchor)
-      const out1Circle = new ShapeNode('circle');
-      out1Circle.x = (building.x + dx) * CELL_SIZE + CELL_SIZE / 2;
-      out1Circle.y = (building.y + dy) * CELL_SIZE + CELL_SIZE / 2;
-      out1Circle.size = 12;
-      out1Circle.fill = '#ef4444';
-      out1Circle.fillOpacity = 0.85;
-      out1Circle.stroke = '#7f1d1d';
-      out1Circle.strokeWidth = 2;
-      group.addChild(out1Circle);
-
-      // Red: output2 port (ahead of secondary cell)
-      const out2Circle = new ShapeNode('circle');
-      out2Circle.x = (building.x + dx - dy) * CELL_SIZE + CELL_SIZE / 2;
-      out2Circle.y = (building.y + dy + dx) * CELL_SIZE + CELL_SIZE / 2;
-      out2Circle.size = 12;
-      out2Circle.fill = '#ef4444';
-      out2Circle.fillOpacity = 0.85;
-      out2Circle.stroke = '#7f1d1d';
-      out2Circle.strokeWidth = 2;
-      group.addChild(out2Circle);
-    } else if (def?.iconPath) {
-      const icon = new SpriteNode();
-      if (building.type === 'button') {
-        const button = building as Button;
-        icon.href = button.isOn ? '/icons/button-on.svg' : '/icons/button-off.svg';
-      } else if (building.type === 'lamp') {
-        const isPowered = world.signals.get(key) === true;
-        icon.href = isPowered ? '/icons/lamp-on.svg' : '/icons/lamp-off.svg';
-      } else {
-        icon.href = def.iconPath;
-      }
-      icon.imgX = x + 4;
-      icon.imgY = y + 4;
-      icon.width = CELL_SIZE - 8;
-      icon.height = CELL_SIZE - 8;
-      icon.imgRotation = rotation;
-      icon.imgPivotX = centerX;
-      icon.imgPivotY = centerY;
-      group.addChild(icon);
-      state.icon = icon;
-    }
-
-    // Receiver overlay
-    if (building.type === 'receiver') {
-      const receiver = building as Receiver;
-      const label = new TextNode();
-      label.textX = centerX;
-      label.textY = y + CELL_SIZE - 2;
-      label.textAnchor = 'middle';
-      label.fontSize = '9';
-      label.fontFamily = 'sans-serif';
-      label.fill = '#44ff44';
-      label.stroke = '#000';
-      label.strokeWidth = 2;
-      label.paintOrder = 'stroke';
-      label.text = receiver.request.name;
-      group.addChild(label);
-
-      state.requestName = receiver.request.name;
-    }
-
-    if (building.type === 'button') {
-      const button = building as Button;
-      state.isOn = button.isOn;
-    }
-
-    if (building.type === 'lamp') {
-      const isPowered = world.signals.get(key) === true;
-      state.isPowered = isPowered;
-    }
-
-    state.rotation = rotation;
-
-    if (building.type === 'arm') {
-      this._syncArmAnimation(key, world.signals.get(key) === true, group);
-    }
-  }
-
-  private _stopArmTween(key: string): void {
-    const tween = this._armTweens.get(key);
-    if (tween) {
-      tween.stop();
-      this._armTweens.delete(key);
-    }
-  }
-
-  private _resolveArmPart(state: any, icon: InlineSvgNode | undefined): SVGGraphicsElement | undefined {
-    let armPart = state.armPart as SVGGraphicsElement | undefined;
-    if (icon && !armPart) {
-      armPart = icon.getElementByOriginalId('robotic-arm') ?? undefined;
-      state.armPart = armPart;
-    }
-    return armPart;
-  }
-
-  private _setArmPartRotation(armPart: SVGGraphicsElement | undefined, angle: number): void {
-    if (!armPart) return;
-    if (angle === 0) {
-      armPart.removeAttribute('transform');
-      return;
-    }
-    armPart.setAttribute('transform', `rotate(${angle} 50 50)`);
-  }
-
-  private _syncArmAnimation(key: string, isPowered: boolean, group: GroupNode): void {
-    const state = (group as any)._buildingState;
-    const icon = state.icon as InlineSvgNode | undefined;
-    const armPart = this._resolveArmPart(state, icon);
-    if (!icon) return;
-
-    if (!isPowered) {
-      this._stopArmTween(key);
-      this._setArmPartRotation(armPart, 0);
-      return;
-    }
-
-    if (this._armTweens.has(key)) return; // already animating
-
-    const tweenState = { angle: 0 };
-    const tween = new TWEEN.Tween(tweenState)
-      .to({ angle: 180 }, WorldRenderer.ARM_ANIM_MS)
-      .easing(TWEEN.Easing.Quadratic.InOut)
-      .yoyo(true)
-      .repeat(Infinity)
-      .onUpdate(() => {
-        const currentArmPart = this._resolveArmPart(state, icon);
-        this._setArmPartRotation(currentArmPart, tweenState.angle);
-      })
-      .start();
-    this._armTweens.set(key, tween);
+    handler?.syncAnimation(world, group);
   }
 
   // ── Items ─────────────────────────────────────────────────────────
