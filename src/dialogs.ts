@@ -1,4 +1,4 @@
-import type { Receiver, Scanner, WorldState } from './types.ts';
+import type { Emitter, ItemColor, ItemShape, Receiver, Scanner, WorldState } from './types.ts';
 import { html, render } from 'lit-html';
 import { propertyRegistry, requestRegistry } from './registry.ts';
 
@@ -110,4 +110,115 @@ export function openReceiverDialog(
       `)}
     </div>
   `, dialog);
+}
+
+// ---------------------------------------------------------------------------
+// Emitter sequence editor dialog
+// ---------------------------------------------------------------------------
+
+const SHAPE_OPTIONS: ItemShape[] = ['circle', 'square', 'triangle'];
+const COLOR_OPTIONS: ItemColor[] = ['red', 'green', 'blue'];
+
+export function openEmitterDialog(
+  emitter: Emitter,
+  onClose?: () => void,
+): void {
+  document.querySelector('#sorter-dialog')?.remove();
+
+  const dialog = document.createElement('div');
+  dialog.id = 'sorter-dialog';
+  document.body.appendChild(dialog);
+  dialog.style.left = `${window.innerWidth / 2 - 180}px`;
+  dialog.style.top  = `${window.innerHeight / 2 - 180}px`;
+
+  const ensureNonEmpty = () => {
+    if (emitter.sequence.length === 0) {
+      emitter.sequence.push({ shape: 'circle', color: 'red' });
+      emitter.nextSequenceIndex = 0;
+    }
+  };
+
+  const close = () => { dialog.remove(); onClose?.(); };
+  const swap = (a: number, b: number) => {
+    const tmp = emitter.sequence[a];
+    emitter.sequence[a] = emitter.sequence[b];
+    emitter.sequence[b] = tmp;
+  };
+
+  const renderDialog = () => {
+    ensureNonEmpty();
+
+    render(html`
+      <div class="sorter-dialog-header">
+        <span>Emitter Sequence</span>
+        <button aria-label="Close" @click=${close}>&times;</button>
+      </div>
+      <div class="sorter-dialog-body">
+        <div class="emitter-sequence-list">
+          ${emitter.sequence.map((entry, index) => html`
+            <div class="emitter-sequence-row">
+              <div class="emitter-sequence-index">#${index + 1}</div>
+              <label>Shape
+                <select @change=${(e: Event) => {
+                  entry.shape = (e.target as HTMLSelectElement).value as ItemShape;
+                  renderDialog();
+                }}>
+                  ${SHAPE_OPTIONS.map(shape => html`
+                    <option value=${shape} ?selected=${entry.shape === shape}>${shape}</option>
+                  `)}
+                </select>
+              </label>
+              <label>Color
+                <select @change=${(e: Event) => {
+                  entry.color = (e.target as HTMLSelectElement).value as ItemColor;
+                  renderDialog();
+                }}>
+                  ${COLOR_OPTIONS.map(color => html`
+                    <option value=${color} ?selected=${entry.color === color}>${color}</option>
+                  `)}
+                </select>
+              </label>
+              <div class="emitter-sequence-actions">
+                <button
+                  ?disabled=${index === 0}
+                  @click=${() => {
+                    if (index === 0) return;
+                    swap(index, index - 1);
+                    renderDialog();
+                  }}
+                >Up</button>
+                <button
+                  ?disabled=${index === emitter.sequence.length - 1}
+                  @click=${() => {
+                    if (index === emitter.sequence.length - 1) return;
+                    swap(index, index + 1);
+                    renderDialog();
+                  }}
+                >Down</button>
+                <button
+                  @click=${() => {
+                    emitter.sequence.splice(index, 1);
+                    if (emitter.nextSequenceIndex > emitter.sequence.length - 1) {
+                      emitter.nextSequenceIndex = 0;
+                    }
+                    renderDialog();
+                  }}
+                >Delete</button>
+              </div>
+            </div>
+          `)}
+        </div>
+
+        <div class="emitter-sequence-footer">
+          <button @click=${() => {
+            emitter.sequence.push({ shape: 'circle', color: 'red' });
+            renderDialog();
+          }}>Add Item</button>
+          <button @click=${close}>Done</button>
+        </div>
+      </div>
+    `, dialog);
+  };
+
+  renderDialog();
 }

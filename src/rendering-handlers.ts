@@ -1,4 +1,4 @@
-import type { Building, BuildingType, WorldState, Receiver, Scanner, Arm, Button, Lamp, Splitter, Merger } from './types.ts';
+import type { Building, BuildingType, WorldState, Emitter, Receiver, Scanner, Arm, Button, Lamp, Splitter, Merger } from './types.ts';
 import { CELL_SIZE } from './types.ts';
 import * as TWEEN from '@tweenjs/tween.js';
 import type { GroupNode } from './scene.ts';
@@ -6,7 +6,7 @@ import { SpriteNode, ShapeNode, TextNode, InlineSvgNode } from './scene.ts';
 import { buildingsRegistry as registry, propertyRegistry } from './registry.ts';
 import { getDirectionOffset, gridKey } from './world.ts';
 import armInlineSvg from './assets/arm.inline.svg?raw';
-import { openScannerDialog, openReceiverDialog } from './dialogs.ts';
+import { openEmitterDialog, openScannerDialog, openReceiverDialog } from './dialogs.ts';
 
 // ---------------------------------------------------------------------------
 // Abstract base handler — one instance per building in the world
@@ -100,6 +100,18 @@ class DefaultBuildingRenderHandler extends BuildingRenderHandler<Building> {
     const href = getIconPath(building.type);
     if (href) applySpriteIcon(building, group, href);
     this._updateState(building);
+  }
+}
+
+class EmitterRenderHandler extends BuildingRenderHandler<Emitter> {
+  applyState(_world: WorldState, building: Emitter, group: GroupNode): void {
+    const href = getIconPath(building.type);
+    if (href) applySpriteIcon(building, group, href);
+    this._updateState(building);
+  }
+
+  openDialog(_world: WorldState, onClose?: () => void): void {
+    openEmitterDialog(this._building, onClose);
   }
 }
 
@@ -421,7 +433,7 @@ class MergerRenderHandler extends BuildingRenderHandler<Merger> {
 type HandlerFactory = () => BuildingRenderHandler<Building>;
 
 const buildingHandlerFactories = new Map<BuildingType, HandlerFactory>([
-  ['emitter',  () => new DefaultBuildingRenderHandler()],
+  ['emitter',  () => new EmitterRenderHandler()],
   ['belt',     () => new DefaultBuildingRenderHandler()],
   ['receiver', () => new ReceiverRenderHandler()],
   ['scanner',  () => new ScannerRenderHandler()],

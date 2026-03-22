@@ -263,6 +263,43 @@
       }
       .receiver-dialog-item:hover { background: rgba(255, 255, 255, 0.1); }
       .receiver-dialog-item.selected { background: rgba(85, 136, 221, 0.2); border-left: 3px solid #5588dd; }
+
+      .emitter-sequence-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 260px;
+        overflow-y: auto;
+      }
+      .emitter-sequence-row {
+        display: grid;
+        grid-template-columns: 38px 1fr 1fr auto;
+        gap: 8px;
+        align-items: end;
+        padding: 8px;
+        border: 1px solid #334;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .emitter-sequence-index {
+        color: #88ccff;
+        font-size: 12px;
+        align-self: center;
+      }
+      .emitter-sequence-actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .emitter-sequence-actions button {
+        padding: 4px 8px;
+        font-size: 12px;
+      }
+      .emitter-sequence-footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+      }
     </style>
   </head>
   <body>

@@ -137,6 +137,8 @@ export function setupInput(
         if (clickedBuilding?.type === 'button') {
           clickedBuilding.isOn = !clickedBuilding.isOn;
           updateDisplay();
+        } else if (clickedBuilding?.type === 'emitter') {
+          worldRenderer.getBuildingHandler(gridKey(coords.x, coords.y))?.openDialog(world, () => updateDisplay());
         } else if (clickedBuilding?.type === 'scanner') {
           worldRenderer.getBuildingHandler(gridKey(coords.x, coords.y))?.openDialog(world, () => updateDisplay());
         } else if (clickedBuilding?.type === 'receiver') {
