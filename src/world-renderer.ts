@@ -1,7 +1,8 @@
 import type { ViewState, WorldState, ItemInstance, Building } from './types.ts';
 import { CELL_SIZE } from './types.ts';
 import type { SceneNode } from './scene.ts';
-import { GroupNode, SpriteNode, ShapeNode, LineNode } from './scene.ts';
+import { GroupNode, SpriteNode, ShapeNode } from './scene.ts';
+import { createWireTileNode, type WireConnectivity } from './wire-tiles.ts';
 import { SceneManager } from './scene-manager.ts';
 import { buildingsRegistry as registry, propertyRegistry } from './registry.ts';
 import { gridKey, getDirectionOffset } from './world.ts';
@@ -25,6 +26,9 @@ export class WorldRenderer {
   // Per-instance building render handlers
   private readonly _buildingHandlers = new Map<string, ReturnType<typeof createBuildingRenderHandler>>();
 
+  // Cached wire connectivity per cell – used to detect neighbour changes
+  private readonly _wireConnectivity = new Map<string, WireConnectivity>();
+
   constructor(
     worldGroup: SVGGElement,
     gridGroup: SVGGElement,
@@ -36,7 +40,7 @@ export class WorldRenderer {
   // ── Buildings ─────────────────────────────────────────────────────
 
   syncWires(world: WorldState): void {
-    const wireMap = new Map<string, { n: boolean; e: boolean; s: boolean; w: boolean }>();
+    const wireMap = new Map<string, WireConnectivity>();
     for (const key of world.wireCells) {
       const [x, y] = key.split(',').map(Number);
       wireMap.set(key, {
@@ -47,68 +51,36 @@ export class WorldRenderer {
       });
     }
 
-    this.scene.diffMap<{ n: boolean; e: boolean; s: boolean; w: boolean }>(
+    const removed = this.scene.diffMap<WireConnectivity>(
       'wires',
       wireMap,
-      (key, cell) => this._createWireNode(key, cell),
-      () => {},
+      (key, conn) => {
+        this._wireConnectivity.set(key, { ...conn });
+        const [x, y] = key.split(',').map(Number);
+        return createWireTileNode(x, y, conn);
+      },
+      (key, conn) => {
+        // Rebuild the node when the connectivity has changed (e.g. a neighbour
+        // was placed or removed).  The no-op callback was a bug: tiles never
+        // updated after their first render.
+        const cached = this._wireConnectivity.get(key);
+        if (
+          !cached ||
+          cached.n !== conn.n ||
+          cached.e !== conn.e ||
+          cached.s !== conn.s ||
+          cached.w !== conn.w
+        ) {
+          this._wireConnectivity.set(key, { ...conn });
+          const [x, y] = key.split(',').map(Number);
+          this.scene.addNode('wires', key, createWireTileNode(x, y, conn));
+        }
+      },
     );
-  }
 
-  private _createWireNode(
-    key: string,
-    cell: { n: boolean; e: boolean; s: boolean; w: boolean },
-  ): SceneNode {
-    const group = new GroupNode();
-
-    const [x, y] = key.split(',').map(Number);
-    const cx = x * CELL_SIZE + CELL_SIZE / 2;
-    const cy = y * CELL_SIZE + CELL_SIZE / 2;
-
-    const addSegment = (x1: number, y1: number, x2: number, y2: number) => {
-      const shell = new LineNode();
-      shell.x1 = x1;
-      shell.y1 = y1;
-      shell.x2 = x2;
-      shell.y2 = y2;
-      shell.lineStroke = '#1e293b';
-      shell.lineStrokeWidth = 10;
-      group.addChild(shell);
-
-      const core = new LineNode();
-      core.x1 = x1;
-      core.y1 = y1;
-      core.x2 = x2;
-      core.y2 = y2;
-      core.lineStroke = '#d97706';
-      core.lineStrokeWidth = 4;
-      group.addChild(core);
-    };
-
-    const half = CELL_SIZE / 2;
-    if (cell.n) addSegment(cx, cy, cx, cy - half);
-    if (cell.e) addSegment(cx, cy, cx + half, cy);
-    if (cell.s) addSegment(cx, cy, cx, cy + half);
-    if (cell.w) addSegment(cx, cy, cx - half, cy);
-
-    // Endcap dot for isolated cell or junction hub for connected cell
-    const hubOuter = new ShapeNode('circle');
-    hubOuter.x = cx;
-    hubOuter.y = cy;
-    hubOuter.size = 10;
-    hubOuter.fill = '#1e293b';
-    hubOuter.stroke = '#0f172a';
-    hubOuter.strokeWidth = 1;
-    group.addChild(hubOuter);
-
-    const hubInner = new ShapeNode('circle');
-    hubInner.x = cx;
-    hubInner.y = cy;
-    hubInner.size = 4;
-    hubInner.fill = '#fbbf24';
-    group.addChild(hubInner);
-
-    return group;
+    for (const key of removed) {
+      this._wireConnectivity.delete(key);
+    }
   }
 
   getBuildingHandler(key: string): BuildingRenderHandler<Building> | undefined {
