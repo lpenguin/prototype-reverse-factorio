@@ -21,7 +21,7 @@ export class WorldRenderer {
   private _gridLines: SVGLineElement[] = [];
 
   // Preview cache for change detection
-  private _prevPreview = { buildingId: '', x: NaN, y: NaN, direction: NaN };
+  private _prevPreview = { buildingId: '', x: NaN, y: NaN, direction: NaN, wireKey: '' };
 
   // Per-instance building render handlers
   private readonly _buildingHandlers = new Map<string, ReturnType<typeof createBuildingRenderHandler>>();
@@ -223,13 +223,15 @@ export class WorldRenderer {
 
     // Check if anything changed
     const prev = this._prevPreview;
-    const changed = prev.buildingId !== buildingId || prev.x !== px || prev.y !== py || prev.direction !== dir;
+    const wireKey = view.wirePreviewCells.join('|');
+    const changed = prev.buildingId !== buildingId || prev.x !== px || prev.y !== py || prev.direction !== dir || prev.wireKey !== wireKey;
     if (!changed) return;
 
     prev.buildingId = buildingId;
     prev.x = px;
     prev.y = py;
     prev.direction = dir;
+    prev.wireKey = wireKey;
 
     // Remove old preview
     const existing = this.scene.getNode('preview', 'ghost');

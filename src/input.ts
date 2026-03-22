@@ -193,17 +193,24 @@ export function setupInput(
   svgElement.addEventListener('pointermove', (e) => {
     const coords = getGridCoords(e.clientX, e.clientY);
 
+    // Update wire preview cells first so they are current when previewCoords triggers a render
+    if (isWireDragging && wireStartCoords) {
+      viewState.wirePreviewCells = getOrthogonalDragCells(wireStartCoords, coords);
+    }
+
     // Update preview coords whenever a tool is selected
     if (viewState.selectedBuildingId) {
       if (!viewState.previewCoords || viewState.previewCoords.x !== coords.x || viewState.previewCoords.y !== coords.y) {
         viewState.previewCoords = coords;
         updateDisplay();
+      } else if (isWireDragging) {
+        // Cursor hasn't left the cell but wire cells may have changed (drag just started)
+        updateDisplay();
       }
     }
 
     if (isWireDragging && wireStartCoords) {
-      viewState.wirePreviewCells = getOrthogonalDragCells(wireStartCoords, coords);
-      updateDisplay();
+      // wirePreviewCells already updated above; no additional render needed
     } else if (isPainting) {
       if (viewState.selectedBuildingId === 'erase') {
         tryErase(coords);
