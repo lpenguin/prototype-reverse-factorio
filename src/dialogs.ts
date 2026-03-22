@@ -1,4 +1,4 @@
-import type { Emitter, ItemColor, ItemShape, Receiver, Scanner, WorldState } from './types.ts';
+import type { Emitter, ItemColor, ItemShape, ItemSize, Receiver, Scanner, WorldState } from './types.ts';
 import { html, render } from 'lit-html';
 import { propertyRegistry, requestRegistry } from './registry.ts';
 
@@ -118,6 +118,7 @@ export function openReceiverDialog(
 
 const SHAPE_OPTIONS: ItemShape[] = ['circle', 'square', 'triangle'];
 const COLOR_OPTIONS: ItemColor[] = ['red', 'green', 'blue'];
+const SIZE_OPTIONS: ItemSize[] = ['small', 'medium', 'large'];
 
 export function openEmitterDialog(
   emitter: Emitter,
@@ -131,12 +132,21 @@ export function openEmitterDialog(
   dialog.style.left = `${window.innerWidth / 2 - 180}px`;
   dialog.style.top  = `${window.innerHeight / 2 - 180}px`;
 
+  let randomCount = 5;
+
   const ensureNonEmpty = () => {
     if (emitter.sequence.length === 0) {
-      emitter.sequence.push({ shape: 'circle', color: 'red' });
+      emitter.sequence.push({ shape: 'circle', color: 'red', size: 'medium' });
       emitter.nextSequenceIndex = 0;
     }
   };
+
+  const randomOf = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+  const randomSequenceItem = () => ({
+    shape: randomOf(SHAPE_OPTIONS),
+    color: randomOf(COLOR_OPTIONS),
+    size: randomOf(SIZE_OPTIONS),
+  });
 
   const close = () => { dialog.remove(); onClose?.(); };
   const swap = (a: number, b: number) => {
@@ -154,6 +164,41 @@ export function openEmitterDialog(
         <button aria-label="Close" @click=${close}>&times;</button>
       </div>
       <div class="sorter-dialog-body">
+        <div class="emitter-sequence-controls">
+          <label class="emitter-loop-toggle">
+            <input
+              type="checkbox"
+              .checked=${emitter.loop}
+              @change=${(e: Event) => {
+                emitter.loop = (e.target as HTMLInputElement).checked;
+              }}
+            />
+            Loop sequence
+          </label>
+          <div class="emitter-random-controls">
+            <label>Random N
+              <input
+                type="number"
+                min="1"
+                max="999"
+                .value=${String(randomCount)}
+                @input=${(e: Event) => {
+                  const value = Number((e.target as HTMLInputElement).value);
+                  if (Number.isFinite(value)) {
+                    randomCount = Math.max(1, Math.floor(value));
+                  }
+                }}
+              />
+            </label>
+            <button @click=${() => {
+              const count = Math.max(1, Math.floor(randomCount));
+              emitter.sequence = Array.from({ length: count }, () => randomSequenceItem());
+              emitter.nextSequenceIndex = 0;
+              renderDialog();
+            }}>Generate Random</button>
+          </div>
+        </div>
+
         <div class="emitter-sequence-list">
           ${emitter.sequence.map((entry, index) => html`
             <div class="emitter-sequence-row">
@@ -175,6 +220,16 @@ export function openEmitterDialog(
                 }}>
                   ${COLOR_OPTIONS.map(color => html`
                     <option value=${color} ?selected=${entry.color === color}>${color}</option>
+                  `)}
+                </select>
+              </label>
+              <label>Size
+                <select @change=${(e: Event) => {
+                  entry.size = (e.target as HTMLSelectElement).value as ItemSize;
+                  renderDialog();
+                }}>
+                  ${SIZE_OPTIONS.map(size => html`
+                    <option value=${size} ?selected=${entry.size === size}>${size}</option>
                   `)}
                 </select>
               </label>
@@ -211,7 +266,7 @@ export function openEmitterDialog(
 
         <div class="emitter-sequence-footer">
           <button @click=${() => {
-            emitter.sequence.push({ shape: 'circle', color: 'red' });
+            emitter.sequence.push({ shape: 'circle', color: 'red', size: 'medium' });
             renderDialog();
           }}>Add Item</button>
           <button @click=${close}>Done</button>
