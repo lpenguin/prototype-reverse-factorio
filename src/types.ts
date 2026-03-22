@@ -95,13 +95,9 @@ export interface RequestsConfig {
 export interface ItemInstance {
   /** Stable identity assigned by addItem(). Always set once the item is in the world. */
   id: string;
-  defId: string;
-  /** Runtime-assigned shape key (e.g. circle/square/triangle). */
-  shape?: string;
-  /** Runtime-assigned color key (e.g. red/green/blue). */
-  color?: string;
-  /** Runtime-assigned size key (e.g. small/medium/large). */
-  size?: string;
+  shape?: ItemShape;
+  color?: ItemColor;
+  size?: ItemSize;
   x: number;
   y: number;
   renderX: number;

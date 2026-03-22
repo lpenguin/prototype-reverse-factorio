@@ -3,7 +3,7 @@ import { CELL_SIZE } from './types.ts';
 import type { SceneNode } from './scene.ts';
 import { GroupNode, SpriteNode, ShapeNode, LineNode } from './scene.ts';
 import { SceneManager } from './scene-manager.ts';
-import { buildingsRegistry as registry, itemRegistry, propertyRegistry } from './registry.ts';
+import { buildingsRegistry as registry, propertyRegistry } from './registry.ts';
 import { gridKey, getDirectionOffset } from './world.ts';
 import { createBuildingRenderHandler, type BuildingRenderHandler } from './rendering-handlers.ts';
 
@@ -187,11 +187,9 @@ export class WorldRenderer {
   }
 
   private _createItemNode(item: ItemInstance): SceneNode {
-    const def = itemRegistry.getItem(item.defId);
-    const props = def?.properties ?? {};
-    const sizeKey = item.size ?? (typeof props.size === 'string' ? props.size : 'medium');
-    const shapeKey = item.shape ?? (typeof props.shape === 'string' ? props.shape : 'circle');
-    const colorKey = item.color ?? (typeof props.color === 'string' ? props.color : 'red');
+    const sizeKey = item.size ?? 'medium';
+    const shapeKey = item.shape ?? 'circle';
+    const colorKey = item.color ?? 'red';
 
     const size = (propertyRegistry.getValue('size', sizeKey) as number) || 24;
     const shape = (propertyRegistry.getValue('shape', shapeKey) as string) || shapeKey || 'circle';

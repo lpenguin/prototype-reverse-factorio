@@ -40,11 +40,9 @@ describe('Request Logic', () => {
     };
     (world.buildings.get('10,10') as Receiver).request = specificReq;
 
-    const itemDefId = 'small-red-square'; // color: red
-    
     const belt = { type: 'belt' as const, x: 9, y: 10, direction: Direction.E };
     placeBuilding(world, belt);
-    addItem(world, { defId: itemDefId, x: 9, y: 10, renderX: 9, renderY: 10, renderScale: 0 });
+    addItem(world, { color: 'red', x: 9, y: 10, renderX: 9, renderY: 10, renderScale: 0 });
 
     const initialMoney = world.playerMoney;
     tickWorld(world);
@@ -75,11 +73,9 @@ describe('Request Logic', () => {
     placeBuilding(world, receiver);
     (world.buildings.get('20,20') as Receiver).request = specificReq;
     
-    const itemDefId = 'large-blue-circle'; // color: blue
-
     const belt = { type: 'belt' as const, x: 19, y: 20, direction: Direction.E };
     placeBuilding(world, belt);
-    addItem(world, { defId: itemDefId, x: 19, y: 20, renderX: 19, renderY: 20, renderScale: 0 });
+    addItem(world, { color: 'blue', x: 19, y: 20, renderX: 19, renderY: 20, renderScale: 0 });
 
     tickWorld(world);
     
@@ -109,7 +105,6 @@ describe('Request Logic', () => {
 
     placeBuilding(world, { type: 'belt', x: 29, y: 30, direction: Direction.E });
     addItem(world, {
-      defId: 'large-blue-circle',
       color: 'red',
       x: 29,
       y: 30,

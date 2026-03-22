@@ -43,7 +43,6 @@ import type {
   Merger,
 } from './types.ts';
 import { MoveState } from './types.ts';
-import { itemRegistry } from './registry.ts';
 import { gridKey, getDirectionOffset, nextItemId } from './world.ts';
 
 // ---------------------------------------------------------------------------
@@ -78,13 +77,11 @@ function itemMatchesFilter(
   return String(getEffectiveItemProperty(item, filterProperty) ?? '') === filterValue;
 }
 
-function getEffectiveItemProperty(item: ItemInstance, property: string): string | number | undefined {
-  if (property === 'shape' && item.shape) return item.shape;
-  if (property === 'color' && item.color) return item.color;
-  if (property === 'size' && item.size) return item.size;
-  const itemDef = itemRegistry.getItem(item.defId);
-  if (!itemDef) return undefined;
-  return itemDef.properties[property];
+function getEffectiveItemProperty(item: ItemInstance, property: string): string | undefined {
+  if (property === 'shape') return item.shape;
+  if (property === 'color') return item.color;
+  if (property === 'size') return item.size;
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -530,8 +527,6 @@ class ArmHandler extends BuildingHandler<Arm> {
 class EmitterHandler extends BuildingHandler<Emitter> {
   accept() { return false; }
 
-  private static readonly DEFAULT_DEF_ID = 'small-red-square';
-
   generateIntents(world: WorldState, emitter: Emitter, key: string): MoveProposal[] {
     if (!world.items.has(key)) return [];
     const { dx, dy } = getDirectionOffset(emitter.direction);
@@ -552,7 +547,6 @@ class EmitterHandler extends BuildingHandler<Emitter> {
 
     world.items.set(key, {
       id: nextItemId(),
-      defId: EmitterHandler.DEFAULT_DEF_ID,
       shape: seqItem.shape,
       color: seqItem.color,
       size: seqItem.size,

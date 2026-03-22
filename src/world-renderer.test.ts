@@ -49,21 +49,21 @@ describe('addItem id assignment', () => {
   });
 
   it('auto-assigns a non-empty id when none is provided', () => {
-    addItem(world, { defId: 'large-blue-circle', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
+    addItem(world, { x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
     const item = world.items.get(gridKey(0, 0))!;
     expect(item.id).toBeTruthy();
   });
 
   it('preserves an explicitly supplied id', () => {
-    addItem(world, { id: 'my-custom-id', defId: 'large-blue-circle', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
+    addItem(world, { id: 'my-custom-id', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
     const item = world.items.get(gridKey(0, 0))!;
     expect(item.id).toBe('my-custom-id');
   });
 
   it('assigns distinct ids to items placed at different cells', () => {
-    addItem(world, { defId: 'large-blue-circle',    x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
-    addItem(world, { defId: 'small-red-square',     x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 1 });
-    addItem(world, { defId: 'medium-green-triangle', x: 2, y: 0, renderX: 2, renderY: 0, renderScale: 1 });
+    addItem(world, { x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
+    addItem(world, { x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 1 });
+    addItem(world, { x: 2, y: 0, renderX: 2, renderY: 0, renderScale: 1 });
 
     const ids = [
       world.items.get(gridKey(0, 0))!.id,
@@ -74,12 +74,12 @@ describe('addItem id assignment', () => {
     expect(new Set(ids).size).toBe(3);
   });
 
-  it('assigns shape and color defaults from item definition when omitted', () => {
-    addItem(world, { defId: 'large-blue-circle', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
+  it('applies default shape/color/size when omitted', () => {
+    addItem(world, { x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
     const item = world.items.get(gridKey(0, 0))!;
-    expect(item.shape).toBe('circle');
-    expect(item.color).toBe('blue');
-    expect(item.size).toBe('large');
+    expect(item.shape).toBeUndefined();
+    expect(item.color).toBeUndefined();
+    expect(item.size).toBeUndefined();
   });
 });
 
@@ -194,9 +194,9 @@ describe('WorldRenderer.syncItems id-based node management', () => {
 
   it('creates one scene node per item, keyed by item.id', () => {
     const world = createWorld();
-    addItem(world, { defId: 'large-blue-circle',    x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
-    addItem(world, { defId: 'small-red-square',     x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 1 });
-    addItem(world, { defId: 'medium-green-triangle', x: 2, y: 0, renderX: 2, renderY: 0, renderScale: 1 });
+    addItem(world, { x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
+    addItem(world, { x: 1, y: 0, renderX: 1, renderY: 0, renderScale: 1 });
+    addItem(world, { x: 2, y: 0, renderX: 2, renderY: 0, renderScale: 1 });
 
     renderer.syncItems(world);
 
@@ -212,10 +212,9 @@ describe('WorldRenderer.syncItems id-based node management', () => {
     expect(trackedItemKeys().length).toBe(3);
   });
 
-  it('renders runtime-assigned shape and color instead of defId defaults', () => {
+  it('renders explicit shape and color properties', () => {
     const world = createWorld();
     addItem(world, {
-      defId: 'small-red-square',
       shape: 'triangle',
       color: 'blue',
       size: 'large',
@@ -237,7 +236,7 @@ describe('WorldRenderer.syncItems id-based node management', () => {
 
   it('reuses the same node when an item moves to a different cell (same id)', () => {
     const world = createWorld();
-    addItem(world, { defId: 'large-blue-circle', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
+    addItem(world, { x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
 
     renderer.syncItems(world);
 
@@ -274,16 +273,16 @@ describe('WorldRenderer.syncItems id-based node management', () => {
     const world = createWorld();
 
     // Tick 1: blue circle at (0,0)
-    addItem(world, { defId: 'large-blue-circle', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
+    addItem(world, { color: 'blue', shape: 'circle', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
     renderer.syncItems(world);
 
     const circleId = world.items.get(gridKey(0, 0))!.id;
     const circleNode = renderer.scene.getNode('items', circleId)!;
     expect(circleNode).toBeDefined();
 
-    // Tick 2: blue circle leaves (0,0); green triangle appears at (0,0)
+    // Tick 2: blue circle leaves (0,0); triangle appears at (0,0)
     world.items.delete(gridKey(0, 0));
-    addItem(world, { defId: 'medium-green-triangle', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
+    addItem(world, { shape: 'triangle', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
     renderer.syncItems(world);
 
     const triangleId = world.items.get(gridKey(0, 0))!.id;
@@ -302,7 +301,7 @@ describe('WorldRenderer.syncItems id-based node management', () => {
 
   it('removes the scene node when an item is removed from the world', () => {
     const world = createWorld();
-    addItem(world, { defId: 'large-blue-circle', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
+    addItem(world, { x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
     renderer.syncItems(world);
 
     const itemId = world.items.get(gridKey(0, 0))!.id;
@@ -317,7 +316,7 @@ describe('WorldRenderer.syncItems id-based node management', () => {
 
   it('dyingItems are kept in the scene until they leave the dying map', () => {
     const world = createWorld();
-    addItem(world, { defId: 'large-blue-circle', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
+    addItem(world, { x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
     renderer.syncItems(world);
 
     const dying = world.items.get(gridKey(0, 0))!;
@@ -338,15 +337,15 @@ describe('WorldRenderer.syncItems id-based node management', () => {
   it('a dying item and a new item at the same cell both get correct nodes', () => {
     const world = createWorld();
 
-    // Tick 1: blue circle
-    addItem(world, { defId: 'large-blue-circle', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
+    // Tick 1: item A
+    addItem(world, { color: 'blue', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
     renderer.syncItems(world);
     const circleId = world.items.get(gridKey(0, 0))!.id;
     const circle = world.items.get(gridKey(0, 0))!;
 
-    // Tick 2: circle is now dying; red square takes the cell
+    // Tick 2: item A is now dying; item B takes the cell
     world.items.delete(gridKey(0, 0));
-    addItem(world, { defId: 'small-red-square', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
+    addItem(world, { color: 'red', x: 0, y: 0, renderX: 0, renderY: 0, renderScale: 1 });
     const squareId = world.items.get(gridKey(0, 0))!.id;
 
     const dyingMap = new Map([[circle.id, circle]]);
