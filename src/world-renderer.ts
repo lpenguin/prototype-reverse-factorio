@@ -345,10 +345,10 @@ export class WorldRenderer {
         const iconRotation = (dir - 1) * 90;
         const icon = new SpriteNode();
         icon.href = def.iconPath;
-        icon.width = CELL_SIZE - 8;
-        icon.height = 2 * CELL_SIZE - 8;
-        icon.imgX = spanCenterX - (CELL_SIZE - 8) / 2;
-        icon.imgY = spanCenterY - (2 * CELL_SIZE - 8) / 2;
+        icon.width = CELL_SIZE;
+        icon.height = 2 * CELL_SIZE;
+        icon.imgX = spanCenterX - CELL_SIZE / 2;
+        icon.imgY = spanCenterY - (2 * CELL_SIZE) / 2;
         icon.imgOpacity = 0.6;
         icon.imgRotation = iconRotation;
         icon.imgPivotX = spanCenterX;
@@ -369,10 +369,10 @@ export class WorldRenderer {
       if (iconPath) {
         const icon = new SpriteNode();
         icon.href = iconPath;
-        icon.imgX = x * CELL_SIZE + 4;
-        icon.imgY = y * CELL_SIZE + 4;
-        icon.width = CELL_SIZE - 8;
-        icon.height = CELL_SIZE - 8;
+        icon.imgX = x * CELL_SIZE;
+        icon.imgY = y * CELL_SIZE;
+        icon.width = CELL_SIZE;
+        icon.height = CELL_SIZE;
         icon.imgOpacity = 0.6;
         if (!isErase) {
           icon.imgRotation = rotation;

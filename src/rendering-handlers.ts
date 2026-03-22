@@ -78,10 +78,10 @@ function applySpriteIcon(
 
   const icon = new SpriteNode();
   icon.href = href;
-  icon.imgX = x + 4;
-  icon.imgY = y + 4;
-  icon.width = CELL_SIZE - 8;
-  icon.height = CELL_SIZE - 8;
+  icon.imgX = x;
+  icon.imgY = y;
+  icon.width = CELL_SIZE;
+  icon.height = CELL_SIZE;
   icon.imgRotation = rotation;
   icon.imgPivotX = centerX;
   icon.imgPivotY = centerY;
@@ -206,10 +206,10 @@ class ArmRenderHandler extends BuildingRenderHandler<Arm> {
 
     const icon = new InlineSvgNode();
     icon.svgSource = armInlineSvg;
-    icon.svgX = x + 4;
-    icon.svgY = y + 4;
-    icon.width = CELL_SIZE - 8;
-    icon.height = CELL_SIZE - 8;
+    icon.svgX = x;
+    icon.svgY = y;
+    icon.width = CELL_SIZE;
+    icon.height = CELL_SIZE;
     icon.rotation = rotation;
     icon.pivotX = centerX;
     icon.pivotY = centerY;
@@ -323,10 +323,10 @@ class SplitterRenderHandler extends BuildingRenderHandler<Splitter> {
 
       const icon = new SpriteNode();
       icon.href = def.iconPath;
-      icon.width = CELL_SIZE - 8;
-      icon.height = 2 * CELL_SIZE - 8;
-      icon.imgX = spanCenterX - (CELL_SIZE - 8) / 2;
-      icon.imgY = spanCenterY - (2 * CELL_SIZE - 8) / 2;
+      icon.width = CELL_SIZE;
+      icon.height = 2 * CELL_SIZE;
+      icon.imgX = spanCenterX - (CELL_SIZE) / 2;
+      icon.imgY = spanCenterY - (2 * CELL_SIZE) / 2;
       icon.imgRotation = splitterRotation;
       icon.imgPivotX = spanCenterX;
       icon.imgPivotY = spanCenterY;
@@ -383,10 +383,10 @@ class MergerRenderHandler extends BuildingRenderHandler<Merger> {
 
       const icon = new SpriteNode();
       icon.href = def.iconPath;
-      icon.width = CELL_SIZE - 8;
-      icon.height = 2 * CELL_SIZE - 8;
-      icon.imgX = spanCenterX - (CELL_SIZE - 8) / 2;
-      icon.imgY = spanCenterY - (2 * CELL_SIZE - 8) / 2;
+      icon.width = CELL_SIZE;
+      icon.height = 2 * CELL_SIZE;
+      icon.imgX = spanCenterX - (CELL_SIZE) / 2;
+      icon.imgY = spanCenterY - (2 * CELL_SIZE) / 2;
       icon.imgRotation = mergerRotation;
       icon.imgPivotX = spanCenterX;
       icon.imgPivotY = spanCenterY;
