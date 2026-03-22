@@ -38,39 +38,45 @@ function init() {
   // Initialize toolbar
   const toolbar = document.querySelector<HTMLDivElement>('#toolbar')!;
   toolbar.innerHTML = '';
-  registry.getAllBuildings().forEach(def => {
+
+  function createToolItem(id: string, iconSrc: string, name: string): HTMLDivElement {
     const tool = document.createElement('div');
     tool.className = 'tool';
-    tool.dataset.type = def.id;
-    
-    const icon = document.createElement('img');
-    icon.src = def.iconPath;
-    icon.style.width = '24px';
-    icon.style.height = '24px';
-    icon.style.pointerEvents = 'none';
-    
+    tool.dataset.type = id;
+
     const label = document.createElement('span');
-    label.textContent = def.name;
-    label.style.marginLeft = '8px';
+    label.className = 'tool-name';
+    label.textContent = name;
     label.style.pointerEvents = 'none';
-    
-    tool.style.display = 'flex';
-    tool.style.alignItems = 'center';
-    
-    tool.appendChild(icon);
+
+    const iconWrapper = document.createElement('div');
+    iconWrapper.className = 'tool-icon';
+    iconWrapper.style.pointerEvents = 'none';
+
+    const icon = document.createElement('img');
+    icon.src = iconSrc;
+    icon.style.width = '38px';
+    icon.style.height = '38px';
+    icon.style.pointerEvents = 'none';
+
+    iconWrapper.appendChild(icon);
     tool.appendChild(label);
-    
+    tool.appendChild(iconWrapper);
+
+    return tool;
+  }
+
+  registry.getAllBuildings().forEach(def => {
+    const tool = createToolItem(def.id, def.iconPath, def.name);
     tool.addEventListener('click', () => {
       const isSelected = tool.classList.contains('selected');
       document.querySelectorAll('.tool').forEach(t => t.classList.remove('selected'));
-      
       if (isSelected) {
         viewState.selectedBuildingId = null;
       } else {
         tool.classList.add('selected');
         viewState.selectedBuildingId = def.id;
       }
-      console.log('Selected tool:', viewState.selectedBuildingId);
     });
     toolbar.appendChild(tool);
   });
@@ -81,79 +87,40 @@ function init() {
   toolbar.appendChild(sep);
 
   // Add erase tool
-  const eraseTool = document.createElement('div');
-  eraseTool.className = 'tool';
-  eraseTool.dataset.type = 'erase';
-  eraseTool.style.display = 'flex';
-  eraseTool.style.alignItems = 'center';
-
-  const eraseIcon = document.createElement('img');
-  eraseIcon.src = '/icons/erase.svg';
-  eraseIcon.style.width = '24px';
-  eraseIcon.style.height = '24px';
-  eraseIcon.style.pointerEvents = 'none';
-
-  const eraseLabel = document.createElement('span');
-  eraseLabel.textContent = 'Erase';
-  eraseLabel.style.marginLeft = '8px';
-  eraseLabel.style.pointerEvents = 'none';
-
-  eraseTool.appendChild(eraseIcon);
-  eraseTool.appendChild(eraseLabel);
-
+  const eraseTool = createToolItem('erase', '/icons/erase.svg', 'Erase');
   eraseTool.addEventListener('click', () => {
     const isSelected = eraseTool.classList.contains('selected');
     document.querySelectorAll('.tool').forEach(t => t.classList.remove('selected'));
-    
     if (isSelected) {
       viewState.selectedBuildingId = null;
     } else {
       eraseTool.classList.add('selected');
       viewState.selectedBuildingId = 'erase';
     }
-    console.log('Selected tool:', viewState.selectedBuildingId);
   });
   toolbar.appendChild(eraseTool);
 
   // Add wire mode tool
-  const wireTool = document.createElement('div');
-  wireTool.className = 'tool';
-  wireTool.dataset.type = 'wire';
-  wireTool.style.display = 'flex';
-  wireTool.style.alignItems = 'center';
-
-  const wireIcon = document.createElement('img');
-  wireIcon.src = '/icons/wire.svg';
-  wireIcon.style.width = '24px';
-  wireIcon.style.height = '24px';
-  wireIcon.style.pointerEvents = 'none';
-
-  const wireLabel = document.createElement('span');
-  wireLabel.textContent = 'Wire';
-  wireLabel.style.marginLeft = '8px';
-  wireLabel.style.pointerEvents = 'none';
-
-  wireTool.appendChild(wireIcon);
-  wireTool.appendChild(wireLabel);
-
+  const wireTool = createToolItem('wire', '/icons/wire.svg', 'Wire');
   wireTool.addEventListener('click', () => {
     const isSelected = wireTool.classList.contains('selected');
     document.querySelectorAll('.tool').forEach(t => t.classList.remove('selected'));
-
     if (isSelected) {
       viewState.selectedBuildingId = null;
     } else {
       wireTool.classList.add('selected');
       viewState.selectedBuildingId = 'wire';
     }
-    console.log('Selected tool:', viewState.selectedBuildingId);
   });
   toolbar.appendChild(wireTool);
 
   const pauseBtn = document.querySelector<HTMLDivElement>('#pause-btn')!;
+  const pauseBtnLabel = document.querySelector<HTMLSpanElement>('#pause-btn-label')!;
+  const pauseBtnIcon = document.querySelector<HTMLImageElement>('#pause-btn-icon')!;
   pauseBtn.addEventListener('click', () => {
     world.isPaused = !world.isPaused;
-    pauseBtn.textContent = world.isPaused ? 'Resume' : 'Pause';
+    pauseBtnLabel.textContent = world.isPaused ? 'Resume' : 'Pause';
+    pauseBtnIcon.src = world.isPaused ? '/icons/play-button.svg' : '/icons/pause-button.svg';
     pauseBtn.classList.toggle('selected', world.isPaused);
   });
 

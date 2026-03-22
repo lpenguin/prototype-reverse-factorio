@@ -11,10 +11,13 @@
       #hud { position: absolute; top: 10px; left: 10px; padding: 10px; background: rgba(255, 255, 255, 0.8); border: 1px solid #aaa; border-radius: 4px; pointer-events: none; z-index: 100; }
       #menu-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 100; }
       #pause-menu { display: flex; background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-      #toolbar { display: flex; gap: 10px; background: rgba(0, 0, 0, 0.7); padding: 10px 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-      .tool { color: white; cursor: pointer; padding: 5px 10px; border: 1px solid transparent; border-radius: 4px; user-select: none; }
-      .tool.selected { border-color: white; background: rgba(255,255,255,0.2); }
-      .separator { width: 1px; height: 24px; background: rgba(255, 255, 255, 0.3); margin: 0 5px; align-self: center; }
+      #toolbar { display: flex; gap: 6px; align-items: stretch; background: rgba(0, 0, 0, 0.7); padding: 8px 12px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+      .tool { color: white; cursor: pointer; padding: 6px 4px; border: 1px solid transparent; border-radius: 6px; user-select: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; width: 62px; min-height: 62px; text-align: center; font-size: 11px; transition: background 0.15s, border-color 0.15s; box-sizing: border-box; }
+      .tool:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.3); }
+      .tool.selected { border-color: #fbbf24; background: rgba(251,191,36,0.22); color: #fde68a; }
+      .tool-name { line-height: 1.2; }
+      .tool-icon { flex: 1; display: flex; align-items: center; justify-content: center; }
+      .separator { width: 1px; background: rgba(255, 255, 255, 0.3); margin: 0 4px; align-self: stretch; }
       
       #request-popup {
         position: absolute;
@@ -342,7 +345,10 @@
     </div>
     <div id="menu-container">
       <div id="pause-menu">
-        <div class="tool" id="pause-btn">Pause</div>
+        <div class="tool" id="pause-btn">
+          <span class="tool-name" id="pause-btn-label">Pause</span>
+          <div class="tool-icon"><img id="pause-btn-icon" src="/icons/pause-button.svg" width="38" height="38" style="pointer-events:none" /></div>
+        </div>
       </div>
       <div id="toolbar">
         <div class="tool" data-type="emitter">Emitter</div>
