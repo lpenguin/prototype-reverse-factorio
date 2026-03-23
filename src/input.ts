@@ -16,6 +16,7 @@ export function setupInput(
   world: WorldState,
   dyingItems: Map<string, ItemInstance>,
   worldRenderer: WorldRenderer,
+  signal: AbortSignal,
 ): void {
   let isPanning = false;
   let isPainting = false;
@@ -190,7 +191,7 @@ export function setupInput(
         cancelSelection();
       }
     }
-  });
+  }, { signal });
 
   // New Request button handling
   const newRequestBtn = document.querySelector('#new-request-btn');
@@ -199,10 +200,10 @@ export function setupInput(
       const newReq = requestRegistry.generateRandomRequest();
       world.requests.push(newReq);
       renderRequestRepository(world);
-    });
+    }, { signal });
   }
 
-  svgElement.addEventListener('contextmenu', (e) => e.preventDefault());
+  svgElement.addEventListener('contextmenu', (e) => e.preventDefault(), { signal });
 
   svgElement.addEventListener('pointermove', (e) => {
     const coords = getGridCoords(e.clientX, e.clientY);
@@ -247,13 +248,13 @@ export function setupInput(
 
     // Update hover popup
     updateRequestPopup(world, worldRenderer, coords.x, coords.y, e.clientX, e.clientY);
-  });
+  }, { signal });
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       cancelSelection();
     }
-  });
+  }, { signal });
 
   svgElement.addEventListener('pointerup', (e) => {
     if (e.button === 2 && isWireEraseDragging) {
@@ -285,7 +286,7 @@ export function setupInput(
       isPanning = false;
       svgElement.releasePointerCapture(e.pointerId);
     }
-  });
+  }, { signal });
 
   // Zoom interaction
   svgElement.addEventListener('wheel', (e) => {
@@ -313,7 +314,7 @@ export function setupInput(
     viewState.zoom = newZoom;
 
     updateDisplay();
-  }, { passive: false });
+  }, { passive: false, signal });
 
   // Initial display
   updateDisplay();
@@ -321,5 +322,5 @@ export function setupInput(
   // Resize handling
   window.addEventListener('resize', () => {
     updateDisplay();
-  });
+  }, { signal });
 }

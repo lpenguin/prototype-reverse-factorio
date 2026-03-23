@@ -1,5 +1,5 @@
 import { createWorld } from './world.ts';
-import type { ViewState, ItemInstance } from './types.ts';
+import type { ViewState, WorldState, ItemInstance } from './types.ts';
 import * as TWEEN from '@tweenjs/tween.js';
 import { setupInput } from './input.ts';
 import { buildingsRegistry as registry } from './registry.ts';
@@ -8,18 +8,37 @@ import { tickWorld } from './simulation.ts';
 import { GameTimer } from './timer.ts';
 import { WorldRenderer } from './world-renderer.ts';
 
+// Module-level state — preserved across HMR updates via import.meta.hot.data
+let world!: WorldState;
+let viewState!: ViewState;
+let timer!: GameTimer;
+let abortController!: AbortController;
+
+if (import.meta.hot) {
+  import.meta.hot.dispose((data) => {
+    data['world'] = world;
+    data['viewState'] = viewState;
+    timer.stop();
+    abortController.abort();
+  });
+}
+
 function init() {
-  const world = createWorld();
-  const viewState: ViewState = {
-    panX: window.innerWidth / 2,
-    panY: window.innerHeight / 2,
-    zoom: 1,
+  world = (import.meta.hot?.data['world'] as WorldState | undefined) ?? createWorld();
+  const prevViewState = import.meta.hot?.data['viewState'] as Partial<ViewState> | undefined;
+  viewState = {
+    panX: prevViewState?.panX ?? window.innerWidth / 2,
+    panY: prevViewState?.panY ?? window.innerHeight / 2,
+    zoom: prevViewState?.zoom ?? 1,
+    selectedDirection: prevViewState?.selectedDirection ?? 1, // Default to East
     selectedBuildingId: null,
-    selectedDirection: 1, // Default to East
     previewCoords: null,
     wirePreviewCells: [],
     wireErasePreviewCells: [],
   };
+
+  abortController = new AbortController();
+  const { signal } = abortController;
 
   const svg = document.querySelector<SVGSVGElement>('#app')!;
   const worldGroup = document.querySelector<SVGGElement>('#world')!;
@@ -32,9 +51,13 @@ function init() {
   // Items removed — kept alive for disappear animation
   const dyingItems = new Map<string, ItemInstance>();
 
+  // Clear scene graph from previous HMR instance
+  worldGroup.innerHTML = '';
+  gridGroup.innerHTML = '';
+
   const worldRenderer = new WorldRenderer(worldGroup, gridGroup);
 
-  setupInput(svg, worldGroup, gridGroup, viewState, world, dyingItems, worldRenderer);
+  setupInput(svg, worldGroup, gridGroup, viewState, world, dyingItems, worldRenderer, signal);
 
   // Initialize toolbar
   const toolbar = document.querySelector<HTMLDivElement>('#toolbar')!;
@@ -123,11 +146,11 @@ function init() {
     pauseBtnLabel.textContent = world.isPaused ? 'Resume' : 'Pause';
     pauseBtnIcon.src = world.isPaused ? '/icons/play-button.svg' : '/icons/pause-button.svg';
     pauseBtn.classList.toggle('selected', world.isPaused);
-  });
+  }, { signal });
 
   // Simulation tick — snapshot before tick to catch removed items
   // Render loop — lerp item render properties each frame
-  const timer = new GameTimer(TICK_MS);
+  timer = new GameTimer(TICK_MS);
 
   timer.onTick(() => {
     if (world.isPaused) return;
@@ -173,4 +196,8 @@ function init() {
 }
 
 init();
+
+if (import.meta.hot) {
+  import.meta.hot.accept();
+}
 
